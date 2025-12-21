@@ -95,7 +95,7 @@ function normalizeHeader(h: string): string {
 /**
  * Find column mapping by checking if normalized header includes any key
  */
-function findColumn(header: string): keyof FunnelRow | null {
+export function findColumn(header: string): keyof FunnelRow | null {
     const normalized = normalizeHeader(header);
 
     for (const key in COLUMN_MAP) {
