@@ -23,6 +23,21 @@ export async function POST(request: NextRequest) {
         if (importType === 'wb_funnel') {
             const rows = parseFunnelSheet(Buffer.from(buffer));
 
+            console.log('Parsed rows count:', rows.length);
+            console.log('First row sample:', rows[0]);
+            console.log('First row with data:', rows.find(r => r.sku));
+
+            // If no valid rows, return error with debug info
+            if (rows.length === 0 || !rows.find(r => r.sku)) {
+                return NextResponse.json({
+                    success: false,
+                    error: 'No valid rows parsed. Check column names match Excel headers.',
+                    recordsProcessed: rows.length,
+                    recordsImported: 0,
+                    debug: { firstRow: rows[0] }
+                });
+            }
+
             // Save to wb_funnel table
             try {
                 await saveFunnelToDb(rows);
