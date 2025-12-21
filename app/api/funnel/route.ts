@@ -1,5 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getSupabaseClient, isSupabaseConfigured } from '@/analytics-engine/supabase/supabase-client';
+import { analyzeFunnel } from '@/modules/analytics/funnel-metrics';
+import { FunnelRow } from '@/modules/import/funnel-parser';
 
 export async function GET() {
     try {
@@ -13,9 +15,9 @@ export async function GET() {
 
         const supabase = getSupabaseClient();
 
-        // Fetch FACT2026 data
+        // Fetch from wb_funnel table
         const { data, error } = await supabase
-            .from('fact2026')
+            .from('wb_funnel')
             .select('*')
             .order('revenue', { ascending: false });
 
@@ -27,40 +29,29 @@ export async function GET() {
             });
         }
 
-        // Transform to analyzed format
-        const analyzed = (data || []).map(row => {
-            const views = row.views || 0;
-            const clicks = row.clicks || 0;
-            const orders = row.orders || 0;
-            const revenue = row.revenue || 0;
-            const stock = row.stock || 0;
-            const total_drr = (row.drr_search || 0) + (row.drr_media || 0) + (row.drr_bloggers || 0) + (row.drr_other || 0);
-            const ctr = row.ctr || (views > 0 ? (clicks / views) * 100 : 0);
-            const cr_order = row.cr_order || (views > 0 ? (orders / views) * 100 : 0);
+        // Transform to FunnelRow format and analyze
+        const funnelRows: FunnelRow[] = (data || []).map(row => ({
+            sku: row.sku || '',
+            name: row.name || '',
+            brand: row.brand || '',
+            views: row.views || 0,
+            clicks: row.clicks || 0,
+            cart: row.cart || 0,
+            orders: row.orders || 0,
+            ctr: row.ctr || 0,
+            cr_cart: row.cr_cart || 0,
+            cr_order: row.cr_order || 0,
+            avg_price: row.avg_price || 0,
+            revenue: row.revenue || 0,
+            stock_units: row.stock_units || 0,
+            drr_search: row.drr_search || 0,
+            drr_media: row.drr_media || 0,
+            drr_bloggers: row.drr_bloggers || 0,
+            drr_other: row.drr_other || 0,
+        }));
 
-            // Determine conversion quality
-            let conversion_quality: 'Normal' | 'Overpriced' | 'Low stock' = 'Normal';
-            if (ctr > 2 && cr_order < 1.5) {
-                conversion_quality = 'Overpriced';
-            } else if (stock < 10) {
-                conversion_quality = 'Low stock';
-            }
-
-            return {
-                sku: row.sku,
-                revenue,
-                views,
-                orders,
-                ctr,
-                cr_order,
-                revenue_per_view: views > 0 ? revenue / views : 0,
-                cpc: clicks > 0 ? revenue / clicks : 0,
-                conversion_quality,
-                stock,
-                price: row.price || 0,
-                total_drr,
-            };
-        });
+        // Apply analyzeFunnel to add computed fields
+        const analyzed = analyzeFunnel(funnelRows);
 
         return NextResponse.json({
             success: true,
