@@ -8,6 +8,7 @@ import { Card, Button } from '@/modules/shared';
 import { Upload, FileSpreadsheet, Check, AlertCircle, ArrowLeft, Loader2 } from 'lucide-react';
 
 const IMPORT_TYPES = [
+    { id: 'wb_funnel', label: 'WB Funnel', description: 'Полная воронка (4-я вкладка)' },
     { id: 'wb_sales', label: 'WB Sales', description: 'Продажи и выручка' },
     { id: 'wb_orders', label: 'WB Orders', description: 'Заказы и конверсия' },
     { id: 'wb_stock', label: 'WB Stock', description: 'Остатки на складе' },
@@ -30,7 +31,7 @@ export default function ImportPage() {
     const [user, setUser] = useState<AuthUser | null>(null);
     const [mounted, setMounted] = useState(false);
 
-    const [selectedType, setSelectedType] = useState<ImportType>('wb_sales');
+    const [selectedType, setSelectedType] = useState<ImportType>('wb_funnel');
     const [selectedFile, setSelectedFile] = useState<File | null>(null);
     const [importing, setImporting] = useState(false);
     const [result, setResult] = useState<ImportResult | null>(null);
@@ -126,8 +127,8 @@ export default function ImportPage() {
                                 key={type.id}
                                 onClick={() => setSelectedType(type.id)}
                                 className={`p-4 rounded-xl border-2 text-left transition-all ${selectedType === type.id
-                                        ? 'border-purple-500 bg-purple-50'
-                                        : 'border-gray-200 hover:border-gray-300'
+                                    ? 'border-purple-500 bg-purple-50'
+                                    : 'border-gray-200 hover:border-gray-300'
                                     }`}
                             >
                                 <div className="font-medium text-gray-900">{type.label}</div>
@@ -144,8 +145,8 @@ export default function ImportPage() {
                     <div
                         onClick={() => fileInputRef.current?.click()}
                         className={`border-2 border-dashed rounded-xl p-8 text-center cursor-pointer transition-all ${selectedFile
-                                ? 'border-green-300 bg-green-50'
-                                : 'border-gray-300 hover:border-purple-400 hover:bg-purple-50'
+                            ? 'border-green-300 bg-green-50'
+                            : 'border-gray-300 hover:border-purple-400 hover:bg-purple-50'
                             }`}
                     >
                         <input

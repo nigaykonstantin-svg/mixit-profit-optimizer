@@ -1,11 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { parseExcelFile, parseWbFile, importToFact2026, ImportType } from '@/modules/import';
+import { parseFunnelSheet } from '@/modules/import/funnel-parser';
+import { analyzeFunnel } from '@/modules/analytics/funnel-metrics';
 
 export async function POST(request: NextRequest) {
     try {
         const formData = await request.formData();
         const file = formData.get('file') as File | null;
-        const importType = formData.get('importType') as ImportType | null;
+        const importType = formData.get('importType') as string | null;
 
         if (!file) {
             return NextResponse.json(
@@ -14,15 +16,28 @@ export async function POST(request: NextRequest) {
             );
         }
 
+        // Read file as ArrayBuffer
+        const buffer = await file.arrayBuffer();
+
+        // Handle WB Funnel type separately
+        if (importType === 'wb_funnel') {
+            const rows = parseFunnelSheet(Buffer.from(buffer));
+            const result = analyzeFunnel(rows);
+            return NextResponse.json({
+                success: true,
+                rows: result,
+                recordsProcessed: rows.length,
+                recordsImported: result.length,
+            });
+        }
+
+        // Validate import type for other types
         if (!importType || !['wb_sales', 'wb_orders', 'wb_stock', 'wb_advertising'].includes(importType)) {
             return NextResponse.json(
                 { success: false, error: 'Invalid import type' },
                 { status: 400 }
             );
         }
-
-        // Read file as ArrayBuffer
-        const buffer = await file.arrayBuffer();
 
         // Parse Excel
         const rows = parseExcelFile(buffer);
@@ -34,7 +49,7 @@ export async function POST(request: NextRequest) {
         }
 
         // Parse to FACT2026 format
-        const records = parseWbFile(rows, importType);
+        const records = parseWbFile(rows, importType as ImportType);
         if (records.length === 0) {
             return NextResponse.json(
                 {
