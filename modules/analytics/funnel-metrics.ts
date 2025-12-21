@@ -296,3 +296,61 @@ export function getHighDrrSkus(
         .sort((a, b) => b.totalDrr - a.totalDrr)
         .slice(0, limit);
 }
+
+/**
+ * Analyzed funnel row with computed metrics
+ */
+export interface AnalyzedFunnelRow {
+    sku: string;
+    revenue: number;
+    views: number;
+    orders: number;
+    ctr: number;
+    cr_order: number;
+    revenue_per_view: number;
+    cpc: number;
+    conversion_quality: 'Overpriced' | 'Low stock' | 'Normal';
+    stock: number;
+    price: number;
+    total_drr: number;
+}
+
+/**
+ * Analyze funnel data with computed quality metrics
+ */
+export function analyzeFunnel(data: FunnelRow[]): AnalyzedFunnelRow[] {
+    return data.map(row => {
+        const revenue_per_view =
+            row.views > 0 ? row.revenue / row.views : 0;
+
+        const cpc =
+            row.clicks > 0 ? row.revenue / row.clicks : 0;
+
+        const conversion_quality: 'Overpriced' | 'Low stock' | 'Normal' =
+            row.ctr > 2 && row.cr_order < 1.5 ? "Overpriced" :
+                row.stock_units < 10 ? "Low stock" :
+                    "Normal";
+
+        return {
+            sku: row.sku,
+            revenue: row.revenue,
+            views: row.views,
+            orders: row.orders,
+            ctr: row.ctr,
+            cr_order: row.cr_order,
+
+            revenue_per_view,
+            cpc,
+            conversion_quality,
+
+            stock: row.stock_units,
+            price: row.avg_price,
+
+            total_drr:
+                (row.drr_search || 0) +
+                (row.drr_media || 0) +
+                (row.drr_bloggers || 0) +
+                (row.drr_other || 0),
+        };
+    });
+}
