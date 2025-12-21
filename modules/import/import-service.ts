@@ -264,10 +264,19 @@ export async function saveFunnelToDb(rows: FunnelRow[]): Promise<void> {
         drr_other: row.drr_other || 0,
     }));
 
+    // Deduplicate by SKU (keep last occurrence)
+    const skuMap = new Map<string, typeof rowsWithDate[0]>();
+    for (const row of rowsWithDate) {
+        if (row.sku) {
+            skuMap.set(row.sku, row);
+        }
+    }
+    const uniqueRows = Array.from(skuMap.values());
+
     // Upsert in batches
     const BATCH_SIZE = 500;
-    for (let i = 0; i < rowsWithDate.length; i += BATCH_SIZE) {
-        const batch = rowsWithDate.slice(i, i + BATCH_SIZE);
+    for (let i = 0; i < uniqueRows.length; i += BATCH_SIZE) {
+        const batch = uniqueRows.slice(i, i + BATCH_SIZE);
         const { error } = await supabase
             .from('wb_funnel')
             .upsert(batch, { onConflict: 'sku,date' });
