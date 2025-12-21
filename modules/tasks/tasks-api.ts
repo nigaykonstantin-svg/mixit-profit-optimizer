@@ -1,6 +1,6 @@
 'use client';
 
-import { Task, TASK_STATUSES } from '@/modules/tasks/task-model';
+import { Task, TASK_STATUSES, TASK_TYPES } from '@/modules/tasks/task-model';
 
 const TASKS_KEY = 'mixit_tasks';
 
@@ -8,7 +8,7 @@ const TASKS_KEY = 'mixit_tasks';
 const DEMO_TASKS: Task[] = [
     {
         id: '1',
-        type: 'prices',
+        type: TASK_TYPES.PRICES,
         title: 'Обновить цены на категорию Лицо',
         description: 'Пересмотреть цены по сезону',
         executor: 'dasha',
@@ -18,7 +18,7 @@ const DEMO_TASKS: Task[] = [
     },
     {
         id: '2',
-        type: 'advertising',
+        type: TASK_TYPES.ADS,
         title: 'Настроить рекламу новой коллекции',
         executor: 'galina',
         status: TASK_STATUSES.IN_PROGRESS,
@@ -27,7 +27,7 @@ const DEMO_TASKS: Task[] = [
     },
     {
         id: '3',
-        type: 'seo',
+        type: TASK_TYPES.SEO,
         title: 'Оптимизация карточек Волосы',
         executor: 'nastya',
         status: TASK_STATUSES.DONE,
@@ -36,7 +36,7 @@ const DEMO_TASKS: Task[] = [
     },
     {
         id: '4',
-        type: 'competitors',
+        type: TASK_TYPES.COMPETITORS,
         title: 'Анализ конкурентов Q4',
         executor: 'arina',
         status: TASK_STATUSES.NEW,
