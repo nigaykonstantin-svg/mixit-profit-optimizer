@@ -1,7 +1,7 @@
 'use client';
 
 import { Task, TaskStatus, TASK_TYPE_CONFIG, TASK_STATUS_CONFIG, TASK_STATUSES } from '@/modules/tasks/task-model';
-import { updateTaskStatus, deleteTask } from '@/modules/tasks/task-service';
+import { updateTaskStatus, deleteTask } from '@/modules/tasks/tasks-api';
 import { USERS, UserId } from '@/modules/users';
 import { Clock, CheckCircle2, Play, Trash2 } from 'lucide-react';
 

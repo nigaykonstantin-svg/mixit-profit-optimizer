@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { TaskType, TASK_TYPE_CONFIG, CATEGORIES, TASK_STATUSES } from '@/modules/tasks/task-model';
-import { addTask } from '@/modules/tasks/task-service';
+import { addTask } from '@/modules/tasks/tasks-api';
 import { USERS, UserId } from '@/modules/users';
 import { Plus, X } from 'lucide-react';
 
