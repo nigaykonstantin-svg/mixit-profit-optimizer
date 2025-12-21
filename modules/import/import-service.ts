@@ -235,16 +235,20 @@ export async function importExcelFile(
         };
     }
 }
-
 /**
  * Save funnel data to wb_funnel table
  */
 export async function saveFunnelToDb(rows: FunnelRow[]): Promise<void> {
     const supabase = getSupabaseClient();
 
-    const { error } = await supabase
-        .from('wb_funnel')
-        .upsert(rows, { onConflict: 'sku' });
+    // Delete existing data first
+    await supabase.from('wb_funnel').delete().neq('id', '00000000-0000-0000-0000-000000000000');
 
-    if (error) throw error;
+    // Insert new data in batches
+    const BATCH_SIZE = 500;
+    for (let i = 0; i < rows.length; i += BATCH_SIZE) {
+        const batch = rows.slice(i, i + BATCH_SIZE);
+        const { error } = await supabase.from('wb_funnel').insert(batch);
+        if (error) throw error;
+    }
 }
