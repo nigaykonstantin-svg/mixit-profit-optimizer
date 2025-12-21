@@ -82,12 +82,9 @@ export default function FunnelPage() {
 
         // Sort
         result.sort((a, b) => {
-            const aVal = a[sort.field];
-            const bVal = b[sort.field];
-            if (typeof aVal === 'string' && typeof bVal === 'string') {
-                return sort.dir === 'asc' ? aVal.localeCompare(bVal) : bVal.localeCompare(aVal);
-            }
-            return sort.dir === 'asc' ? (aVal as number) - (bVal as number) : (bVal as number) - (aVal as number);
+            const x = a[sort.field] as number;
+            const y = b[sort.field] as number;
+            return sort.dir === 'asc' ? x - y : y - x;
         });
 
         return result;
