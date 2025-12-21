@@ -24,7 +24,21 @@ export async function POST(request: NextRequest) {
             const rows = parseFunnelSheet(Buffer.from(buffer));
 
             // Save to wb_funnel table
-            await saveFunnelToDb(rows);
+            try {
+                await saveFunnelToDb(rows);
+            } catch (dbError: unknown) {
+                const errorMessage = dbError instanceof Error
+                    ? dbError.message
+                    : (typeof dbError === 'object' && dbError !== null && 'message' in dbError)
+                        ? String((dbError as { message: unknown }).message)
+                        : JSON.stringify(dbError);
+                return NextResponse.json({
+                    success: false,
+                    error: `Database error: ${errorMessage}`,
+                    recordsProcessed: rows.length,
+                    recordsImported: 0,
+                });
+            }
 
             // Return analyzed data
             const analyzed = analyzeFunnel(rows);
