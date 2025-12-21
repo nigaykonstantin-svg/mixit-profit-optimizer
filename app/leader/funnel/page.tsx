@@ -37,7 +37,7 @@ type QualityFilter = 'all' | 'normal' | 'low_stock' | 'overpriced' | 'high_drr';
 type SortField = 'sku' | 'revenue' | 'views' | 'orders' | 'ctr' | 'cr_order' | 'total_drr' | 'stock';
 type SortDir = 'asc' | 'desc';
 
-const PAGE_SIZE = 10;
+const PAGE_SIZE = 100;
 
 export default function FunnelPage() {
     const router = useRouter();
@@ -336,20 +336,32 @@ export default function FunnelPage() {
                             <div className="text-sm text-gray-500">
                                 Страница {page} из {totalPages}
                             </div>
-                            <div className="flex gap-2">
+                            <div className="flex gap-1">
                                 <button
-                                    onClick={() => setPage(p => Math.max(1, p - 1))}
                                     disabled={page === 1}
-                                    className="p-2 rounded-lg border border-gray-200 disabled:opacity-50 hover:bg-gray-50 transition-all"
+                                    onClick={() => setPage(page - 1)}
+                                    className="px-3 py-1.5 rounded-lg border border-gray-200 disabled:opacity-50 hover:bg-gray-50 transition-all text-sm"
                                 >
-                                    <ChevronLeft size={18} />
+                                    Назад
                                 </button>
+                                {Array.from({ length: totalPages }).map((_, i) => (
+                                    <button
+                                        key={i}
+                                        onClick={() => setPage(i + 1)}
+                                        className={`px-3 py-1.5 rounded-lg text-sm transition-all ${page === i + 1
+                                                ? 'bg-gray-900 text-white'
+                                                : 'border border-gray-200 hover:bg-gray-50'
+                                            }`}
+                                    >
+                                        {i + 1}
+                                    </button>
+                                ))}
                                 <button
-                                    onClick={() => setPage(p => Math.min(totalPages, p + 1))}
                                     disabled={page === totalPages}
-                                    className="p-2 rounded-lg border border-gray-200 disabled:opacity-50 hover:bg-gray-50 transition-all"
+                                    onClick={() => setPage(page + 1)}
+                                    className="px-3 py-1.5 rounded-lg border border-gray-200 disabled:opacity-50 hover:bg-gray-50 transition-all text-sm"
                                 >
-                                    <ChevronRight size={18} />
+                                    Вперед
                                 </button>
                             </div>
                         </div>
