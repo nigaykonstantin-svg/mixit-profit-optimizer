@@ -123,6 +123,7 @@ export function parseFunnelSheet(fileBuffer: Buffer): FunnelRow[] {
         console.log('First row keys:', Object.keys(json[0]));
         // Log which columns we can match
         const headers = Object.keys(json[0]);
+        console.log('Parsed headers:', headers);
         const matchedColumns: Record<string, string> = {};
         for (const h of headers) {
             const mapped = findColumn(h);
