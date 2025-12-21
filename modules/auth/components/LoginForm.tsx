@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { login } from '@/modules/auth/auth-service';
 import { USERS, UserId, USER_ROLES } from '@/modules/users';
+import { Card, Button, Input } from '@/modules/shared';
 import { LogIn, User, Users } from 'lucide-react';
 
 export function LoginForm() {
@@ -66,34 +67,30 @@ export function LoginForm() {
                 </div>
 
                 {/* Login Form */}
-                <div className="bg-white rounded-3xl p-8 shadow-xl shadow-gray-100 border border-gray-100">
+                <Card variant="elevated" padding="lg" className="rounded-3xl">
                     <form onSubmit={handleSubmit} className="space-y-5">
                         <div>
                             <label className="block text-sm font-medium text-gray-700 mb-2">
                                 Логин
                             </label>
-                            <div className="relative">
-                                <User className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
-                                <input
-                                    type="text"
-                                    value={username}
-                                    onChange={(e) => setUsername(e.target.value)}
-                                    placeholder="Введите логин"
-                                    className="w-full pl-12 pr-4 py-3 rounded-xl border border-gray-200 focus:border-purple-500 focus:ring-2 focus:ring-purple-200 transition-all outline-none"
-                                />
-                            </div>
+                            <Input
+                                type="text"
+                                value={username}
+                                onChange={(e) => setUsername(e.target.value)}
+                                placeholder="Введите логин"
+                                icon={<User size={18} />}
+                            />
                         </div>
 
                         <div>
                             <label className="block text-sm font-medium text-gray-700 mb-2">
                                 Пароль
                             </label>
-                            <input
+                            <Input
                                 type="password"
                                 value={password}
                                 onChange={(e) => setPassword(e.target.value)}
                                 placeholder="Введите пароль"
-                                className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-purple-500 focus:ring-2 focus:ring-purple-200 transition-all outline-none"
                             />
                         </div>
 
@@ -103,13 +100,10 @@ export function LoginForm() {
                             </div>
                         )}
 
-                        <button
-                            type="submit"
-                            className="w-full py-3 bg-gradient-to-r from-violet-500 to-purple-600 text-white rounded-xl font-medium flex items-center justify-center gap-2 hover:from-violet-600 hover:to-purple-700 transition-all shadow-lg shadow-purple-200"
-                        >
+                        <Button type="submit" fullWidth>
                             <LogIn size={18} />
                             Войти
-                        </button>
+                        </Button>
                     </form>
 
                     {/* Quick Login */}
@@ -119,21 +113,19 @@ export function LoginForm() {
                         </p>
                         <div className="grid grid-cols-2 gap-2">
                             {Object.entries(USERS).map(([id, user]) => (
-                                <button
+                                <Button
                                     key={id}
+                                    variant="secondary"
                                     onClick={() => handleQuickLogin(id as UserId)}
-                                    className={`p-3 rounded-xl text-sm font-medium transition-all flex items-center gap-2 ${user.role === USER_ROLES.LEADER
-                                        ? 'bg-purple-100 text-purple-700 hover:bg-purple-200'
-                                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                                        }`}
+                                    className={user.role === USER_ROLES.LEADER ? 'bg-purple-100 text-purple-700 hover:bg-purple-200' : ''}
                                 >
                                     <span>{user.avatar}</span>
                                     {user.name}
-                                </button>
+                                </Button>
                             ))}
                         </div>
                     </div>
-                </div>
+                </Card>
 
                 <p className="text-center text-sm text-gray-400 mt-6">
                     Пароль для всех аккаунтов: <code className="bg-gray-100 px-2 py-1 rounded">demo</code>

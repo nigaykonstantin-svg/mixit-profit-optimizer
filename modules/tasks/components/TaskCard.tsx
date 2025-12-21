@@ -3,6 +3,7 @@
 import { Task, TaskStatus, TASK_TYPE_CONFIG, TASK_STATUS_CONFIG, TASK_STATUSES } from '@/modules/tasks/task-model';
 import { updateTaskStatus, deleteTask } from '@/modules/tasks/tasks-api';
 import { USERS, UserId } from '@/modules/users';
+import { Card, Badge, Button } from '@/modules/shared';
 import { Clock, CheckCircle2, Play, Trash2 } from 'lucide-react';
 
 interface TaskCardProps {
@@ -36,15 +37,17 @@ export function TaskCard({ task, isLeader = false, onStatusChange }: TaskCardPro
     };
 
     return (
-        <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
+        <Card hoverable>
             <div className="flex items-start justify-between gap-3 mb-3">
-                <div className={`px-3 py-1 rounded-full text-xs font-medium text-white ${taskType.color}`}>
+                <Badge className={`text-white ${taskType.color}`}>
                     {taskType.label}
-                </div>
-                <div className={`px-3 py-1 rounded-full text-xs font-medium flex items-center gap-1 ${statusConfig.className}`}>
-                    <StatusIcon size={12} />
+                </Badge>
+                <Badge
+                    variant={task.status === TASK_STATUSES.DONE ? 'success' : task.status === TASK_STATUSES.IN_PROGRESS ? 'info' : 'default'}
+                    icon={<StatusIcon size={12} />}
+                >
                     {statusConfig.label}
-                </div>
+                </Badge>
             </div>
 
             <h3 className="font-semibold text-gray-900 mb-2">{task.title}</h3>
@@ -60,9 +63,9 @@ export function TaskCard({ task, isLeader = false, onStatusChange }: TaskCardPro
                 </div>
 
                 {task.category && (
-                    <span className="text-xs text-gray-400 bg-gray-50 px-2 py-1 rounded-full">
+                    <Badge variant="default" size="sm">
                         {task.category}
-                    </span>
+                    </Badge>
                 )}
             </div>
 
@@ -70,33 +73,36 @@ export function TaskCard({ task, isLeader = false, onStatusChange }: TaskCardPro
             {!isLeader && task.status !== TASK_STATUSES.DONE && (
                 <div className="flex gap-2 mt-4">
                     {task.status === TASK_STATUSES.NEW && (
-                        <button
+                        <Button
                             onClick={() => handleStatusChange(TASK_STATUSES.IN_PROGRESS)}
-                            className="flex-1 py-2 px-4 bg-blue-500 text-white rounded-xl text-sm font-medium hover:bg-blue-600 transition-colors"
+                            fullWidth
+                            className="bg-blue-500 hover:bg-blue-600"
                         >
                             Начать
-                        </button>
+                        </Button>
                     )}
                     {task.status === TASK_STATUSES.IN_PROGRESS && (
-                        <button
+                        <Button
                             onClick={() => handleStatusChange(TASK_STATUSES.DONE)}
-                            className="flex-1 py-2 px-4 bg-green-500 text-white rounded-xl text-sm font-medium hover:bg-green-600 transition-colors"
+                            fullWidth
+                            className="bg-green-500 hover:bg-green-600"
                         >
                             Готово
-                        </button>
+                        </Button>
                     )}
                 </div>
             )}
 
             {/* Delete for leader */}
             {isLeader && (
-                <button
+                <Button
+                    variant="danger"
                     onClick={handleDelete}
-                    className="mt-4 p-2 text-gray-400 hover:text-red-500 transition-colors"
+                    className="mt-4 p-2"
                 >
                     <Trash2 size={16} />
-                </button>
+                </Button>
             )}
-        </div>
+        </Card>
     );
 }

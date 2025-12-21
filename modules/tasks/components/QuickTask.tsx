@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { TaskType, TASK_TYPE_CONFIG, CATEGORIES, TASK_STATUSES } from '@/modules/tasks/task-model';
 import { addTask } from '@/modules/tasks/tasks-api';
 import { USERS, UserId } from '@/modules/users';
+import { Card, Button, Input } from '@/modules/shared';
 import { Plus, X } from 'lucide-react';
 
 interface QuickTaskProps {
@@ -39,26 +40,25 @@ export function QuickTask({ onTaskAdded }: QuickTaskProps) {
 
     if (!isOpen) {
         return (
-            <button
-                onClick={() => setIsOpen(true)}
-                className="w-full py-4 px-6 bg-gradient-to-r from-violet-500 to-purple-600 text-white rounded-2xl font-medium flex items-center justify-center gap-2 hover:from-violet-600 hover:to-purple-700 transition-all shadow-lg shadow-purple-200"
-            >
+            <Button onClick={() => setIsOpen(true)} fullWidth size="lg">
                 <Plus size={20} />
                 Новая задача
-            </button>
+            </Button>
         );
     }
 
     return (
-        <div className="bg-white rounded-2xl p-6 shadow-lg border border-gray-100">
+        <Card variant="elevated" padding="lg">
             <div className="flex items-center justify-between mb-4">
                 <h3 className="font-semibold text-gray-900">Новая задача</h3>
-                <button
+                <Button
+                    variant="ghost"
+                    size="sm"
                     onClick={() => setIsOpen(false)}
-                    className="p-1 text-gray-400 hover:text-gray-600"
+                    className="p-1 border-0"
                 >
                     <X size={20} />
-                </button>
+                </Button>
             </div>
 
             <form onSubmit={handleSubmit} className="space-y-4">
@@ -69,17 +69,15 @@ export function QuickTask({ onTaskAdded }: QuickTaskProps) {
                     </label>
                     <div className="grid grid-cols-2 gap-2">
                         {Object.entries(TASK_TYPE_CONFIG).map(([key, value]) => (
-                            <button
+                            <Button
                                 key={key}
                                 type="button"
+                                variant={selectedType === key ? 'primary' : 'secondary'}
                                 onClick={() => setSelectedType(key as TaskType)}
-                                className={`p-3 rounded-xl text-sm font-medium transition-all ${selectedType === key
-                                    ? `${value.color} text-white shadow-md`
-                                    : 'bg-gray-50 text-gray-700 hover:bg-gray-100'
-                                    }`}
+                                className={selectedType === key ? `${value.color} shadow-md` : ''}
                             >
                                 {value.label}
-                            </button>
+                            </Button>
                         ))}
                     </div>
                 </div>
@@ -99,12 +97,11 @@ export function QuickTask({ onTaskAdded }: QuickTaskProps) {
                     <label className="block text-sm font-medium text-gray-700 mb-2">
                         Описание задачи
                     </label>
-                    <input
+                    <Input
                         type="text"
                         value={title}
                         onChange={(e) => setTitle(e.target.value)}
                         placeholder="Что нужно сделать..."
-                        className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-purple-500 focus:ring-2 focus:ring-purple-200 transition-all outline-none"
                     />
                 </div>
 
@@ -115,29 +112,28 @@ export function QuickTask({ onTaskAdded }: QuickTaskProps) {
                     </label>
                     <div className="flex gap-2">
                         {CATEGORIES.map((cat) => (
-                            <button
+                            <Button
                                 key={cat}
                                 type="button"
+                                variant={category === cat ? 'primary' : 'secondary'}
+                                size="sm"
                                 onClick={() => setCategory(category === cat ? '' : cat)}
-                                className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${category === cat
-                                    ? 'bg-gray-900 text-white'
-                                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                                    }`}
+                                className={category === cat ? 'bg-gray-900' : ''}
                             >
                                 {cat}
-                            </button>
+                            </Button>
                         ))}
                     </div>
                 </div>
 
-                <button
+                <Button
                     type="submit"
                     disabled={!selectedType || !title.trim()}
-                    className="w-full py-3 bg-gradient-to-r from-violet-500 to-purple-600 text-white rounded-xl font-medium hover:from-violet-600 hover:to-purple-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                    fullWidth
                 >
                     Создать задачу
-                </button>
+                </Button>
             </form>
-        </div>
+        </Card>
     );
 }
