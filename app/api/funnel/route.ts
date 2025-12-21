@@ -1,5 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getSupabaseClient, isSupabaseConfigured } from '@/analytics-engine/supabase/supabase-client';
+import { analyzeFunnel } from '@/modules/analytics/funnel-metrics';
+import { FunnelRow } from '@/modules/import/funnel-parser';
 
 export async function GET() {
     if (!isSupabaseConfigured()) {
@@ -17,5 +19,29 @@ export async function GET() {
         return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
-    return NextResponse.json({ rows: data });
+    // Transform to FunnelRow format
+    const funnelRows: FunnelRow[] = (data || []).map(row => ({
+        sku: row.sku || '',
+        name: row.name || '',
+        brand: row.brand || '',
+        views: row.views || 0,
+        clicks: row.clicks || 0,
+        cart: row.cart || 0,
+        orders: row.orders || 0,
+        ctr: row.ctr || 0,
+        cr_cart: row.cr_cart || 0,
+        cr_order: row.cr_order || 0,
+        avg_price: row.avg_price || 0,
+        revenue: row.revenue || 0,
+        stock_units: row.stock_units || 0,
+        drr_search: row.drr_search || 0,
+        drr_media: row.drr_media || 0,
+        drr_bloggers: row.drr_bloggers || 0,
+        drr_other: row.drr_other || 0,
+    }));
+
+    // Apply analyzeFunnel to add computed fields
+    const analyzed = analyzeFunnel(funnelRows);
+
+    return NextResponse.json({ rows: analyzed });
 }
