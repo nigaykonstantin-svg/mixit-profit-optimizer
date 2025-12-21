@@ -5,3 +5,4 @@ export * from './wb-parsers';
 export * from './wb-rules-engine';
 export * from './wb-summary';
 export * from './wb-elasticity';
+export * from './wb-config-loader';

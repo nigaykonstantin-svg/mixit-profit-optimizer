@@ -1,59 +1,173 @@
-// WB Rules Engine - Business rules and signal detection
+// WB Rules Engine - Dynamic decision engine with configurable rules
 
 import { WbSku, WbSale, WbOrder, WbStock, WbAdvertising } from './wb-types';
-
-// TODO: Import elasticity when implemented
-// import { getElasticityForSku } from './wb-elasticity';
+import { CategoryConfig } from './wb-config-loader';
+import { ElasticityResult } from './wb-elasticity';
 
 /**
- * TODO: Elasticity-based price change rules
- * 
- * Перед изменением цены вызвать getElasticityForSku(sku):
- * 
- * 1. Если priceElasticity < -1:
- *    → price_up ЗАПРЕЩЁН
- *    → Спрос эластичный, повышение цены снизит выручку
- * 
- * 2. Если priceElasticity > -0.3:
- *    → price_up РАЗРЕШЁН
- *    → Спрос неэластичный, можно поднять цену
- * 
- * 3. Если priceElasticity > 0:
- *    → АГРЕССИВНЫЙ price_up
- *    → Аномалия: рост цены увеличивает спрос (товар Гиффена или премиум)
- * 
- * 4. Если drrElasticity > 0:
- *    → price_up ЗАПРЕЩЁН
- *    → При росте цены растет ДРР, что съедает маржу
- * 
- * Example implementation:
- * 
- * async function canIncreasePrice(sku: string): Promise<{allowed: boolean, aggressive: boolean, reason: string}> {
- *   const { priceElasticity, drrElasticity } = await getElasticityForSku(sku);
- *   
- *   if (drrElasticity > 0) {
- *     return { allowed: false, aggressive: false, reason: 'DRR растет при повышении цены' };
- *   }
- *   
- *   if (priceElasticity < -1) {
- *     return { allowed: false, aggressive: false, reason: 'Эластичный спрос' };
- *   }
- *   
- *   if (priceElasticity > 0) {
- *     return { allowed: true, aggressive: true, reason: 'Товар Гиффена / премиум' };
- *   }
- *   
- *   if (priceElasticity > -0.3) {
- *     return { allowed: true, aggressive: false, reason: 'Неэластичный спрос' };
- *   }
- *   
- *   return { allowed: false, aggressive: false, reason: 'Пограничная эластичность' };
- * }
+ * Input data for SKU decision
  */
+export interface SkuData {
+    sku: WbSku;
+    sale: WbSale;
+    order: WbOrder;
+    stock: WbStock;
+    advertising: WbAdvertising;
+    stock_cover_days: number; // calculated: stock_units / avg_daily_sales
+}
 
 /**
- * Detect signals at SKU level
- * @returns массив сигналов по отдельным SKU
+ * Decision result for a SKU
+ */
+export interface SkuDecision {
+    price: 'up' | 'down' | 'hold';
+    priceStepPct: number;
+    ads: 'scale' | 'reduce' | 'pause' | 'off' | 'hold';
+    reason: string;
+    rule: string;
+}
+
+/**
+ * Get decision for a SKU based on data, config, and elasticity
+ * 
+ * Rules priority (first match wins):
+ * 1. STOP: profit <= 0 → price=up, ads=pause
+ * 2. CLEAR: stock_cover_days >= 120 → price=down
+ * 3. LOW_STOCK: stock_cover_days <= 10 → price=up
+ * 4. OVERPRICED: ctr >= warning AND cr_order < warning → price=down
+ * 5. DRR_SPIKE: drr_search > drr_warning → ads=reduce
+ * 6. ELASTICITY: checks based on elasticity values
+ * 7. DEFAULT: hold
+ */
+export function getDecisionForSku(
+    skuData: SkuData,
+    categoryConfig: CategoryConfig,
+    elasticity: ElasticityResult
+): SkuDecision {
+    const { sale, order, stock, advertising } = skuData;
+    const {
+        min_margin_pct,
+        ctr_warning,
+        cr_order_warning,
+        price_step_pct,
+        drr_warning,
+        stock_critical_days,
+        stock_overstock_days
+    } = categoryConfig;
+
+    // Rule 1: STOP - убыточный товар
+    if (sale.profit_before_mkt <= 0) {
+        return {
+            price: 'up',
+            priceStepPct: price_step_pct,
+            ads: 'pause',
+            reason: `Убыточный товар. Прибыль: ${sale.profit_before_mkt.toFixed(0)}₽`,
+            rule: 'STOP',
+        };
+    }
+
+    // Rule 2: CLEAR - затоваривание
+    if (skuData.stock_cover_days >= stock_overstock_days) {
+        return {
+            price: 'down',
+            priceStepPct: price_step_pct,
+            ads: 'scale',
+            reason: `Затоваривание. Покрытие: ${skuData.stock_cover_days} дней (норма ≤${stock_overstock_days})`,
+            rule: 'CLEAR',
+        };
+    }
+
+    // Rule 3: LOW_STOCK - низкие запасы
+    if (skuData.stock_cover_days <= stock_critical_days) {
+        // Check elasticity before allowing price up
+        if (elasticity.priceElasticity < -1) {
+            return {
+                price: 'hold',
+                priceStepPct: 0,
+                ads: 'reduce',
+                reason: `Низкие запасы (${skuData.stock_cover_days}д), но эластичный спрос (${elasticity.priceElasticity.toFixed(2)}). Цену не повышаем.`,
+                rule: 'LOW_STOCK_ELASTIC',
+            };
+        }
+        if (elasticity.drrElasticity > 0) {
+            return {
+                price: 'hold',
+                priceStepPct: 0,
+                ads: 'reduce',
+                reason: `Низкие запасы (${skuData.stock_cover_days}д), но ДРР растет с ценой. Цену не повышаем.`,
+                rule: 'LOW_STOCK_DRR',
+            };
+        }
+        return {
+            price: 'up',
+            priceStepPct: elasticity.priceElasticity > 0 ? price_step_pct * 2 : price_step_pct,
+            ads: 'reduce',
+            reason: `Низкие запасы. Покрытие: ${skuData.stock_cover_days} дней (критично ≤${stock_critical_days})`,
+            rule: 'LOW_STOCK',
+        };
+    }
+
+    // Rule 4: OVERPRICED - высокий CTR, но низкая конверсия → цена слишком высокая
+    if (order.ctr >= ctr_warning && order.cr_order < cr_order_warning) {
+        return {
+            price: 'down',
+            priceStepPct: price_step_pct,
+            ads: 'hold',
+            reason: `Переоценка. CTR ${order.ctr.toFixed(1)}% (норма), CR ${order.cr_order.toFixed(2)}% (низкий <${cr_order_warning}%)`,
+            rule: 'OVERPRICED',
+        };
+    }
+
+    // Rule 5: DRR_SPIKE - высокий ДРР рекламы
+    const total_drr = advertising.ad_search_drr + advertising.ad_media_drr +
+        advertising.ad_bloggers_drr + advertising.ad_other_drr;
+    if (total_drr > drr_warning) {
+        return {
+            price: 'hold',
+            priceStepPct: 0,
+            ads: 'reduce',
+            reason: `Высокий ДРР: ${total_drr.toFixed(1)}% (порог ${drr_warning}%)`,
+            rule: 'DRR_SPIKE',
+        };
+    }
+
+    // Rule 6: ELASTICITY checks for price optimization
+    // Если маржа выше минимума и эластичность позволяет — можно поднять цену
+    if (sale.profit_margin_before_mkt > min_margin_pct) {
+        // Aggressive up if Giffen good
+        if (elasticity.priceElasticity > 0) {
+            return {
+                price: 'up',
+                priceStepPct: price_step_pct * 2,
+                ads: 'scale',
+                reason: `Премиум товар. Эластичность ${elasticity.priceElasticity.toFixed(2)} > 0. Агрессивное повышение.`,
+                rule: 'ELASTICITY_PREMIUM',
+            };
+        }
+        // Normal up if inelastic
+        if (elasticity.priceElasticity > -0.3 && elasticity.drrElasticity <= 0) {
+            return {
+                price: 'up',
+                priceStepPct: price_step_pct,
+                ads: 'hold',
+                reason: `Неэластичный спрос (${elasticity.priceElasticity.toFixed(2)}). Можно повысить цену.`,
+                rule: 'ELASTICITY_INELASTIC',
+            };
+        }
+    }
+
+    // Rule 7: DEFAULT - всё в норме
+    return {
+        price: 'hold',
+        priceStepPct: 0,
+        ads: 'hold',
+        reason: 'Показатели в норме. Без изменений.',
+        rule: 'DEFAULT',
+    };
+}
+
+/**
+ * Detect signals at SKU level (legacy function, now uses getDecisionForSku internally)
  */
 export function detectSkuSignals(
     sales: WbSale[],
@@ -62,13 +176,12 @@ export function detectSkuSignals(
     adv: WbAdvertising[],
     sku: WbSku[]
 ): Record<string, unknown>[] {
-    // placeholder
+    // TODO: Iterate over SKUs, get config and elasticity, call getDecisionForSku
     return [];
 }
 
 /**
  * Detect signals at Category level
- * @returns массив сигналов по категориям
  */
 export function detectCategorySignals(
     sales: WbSale[],
@@ -77,13 +190,12 @@ export function detectCategorySignals(
     adv: WbAdvertising[],
     sku: WbSku[]
 ): Record<string, unknown>[] {
-    // placeholder
+    // TODO: Aggregate signals by category
     return [];
 }
 
 /**
  * Detect global signals across all data
- * @returns массив глобальных сигналов
  */
 export function detectGlobalSignals(
     sales: WbSale[],
@@ -92,6 +204,6 @@ export function detectGlobalSignals(
     adv: WbAdvertising[],
     sku: WbSku[]
 ): Record<string, unknown>[] {
-    // placeholder
+    // TODO: Detect global trends and anomalies
     return [];
 }
