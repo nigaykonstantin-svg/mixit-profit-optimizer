@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { getCurrentUser, logout, AuthUser } from '@/modules/auth';
 import { getTasks, TaskCard, QuickTask, Task, TASK_STATUSES, TaskStatus } from '@/modules/tasks';
 import { USERS, UserId, getExecutors, USER_ROLES } from '@/modules/users';
-import { LogOut, Filter, Clock, Play, CheckCircle2 } from 'lucide-react';
+import { LogOut, Filter, Clock, Play, CheckCircle2, LayoutGrid, BarChart3 } from 'lucide-react';
 
 const STATUS_TABS: { id: TaskStatus | 'all'; label: string; icon: typeof Clock }[] = [
     { id: 'all', label: 'Все', icon: Filter },
@@ -73,12 +73,28 @@ export default function LeaderDashboard() {
                             <p className="text-sm text-gray-500">Руководитель</p>
                         </div>
                     </div>
-                    <button
-                        onClick={handleLogout}
-                        className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-xl transition-all"
-                    >
-                        <LogOut size={20} />
-                    </button>
+                    <div className="flex items-center gap-2">
+                        <button
+                            onClick={() => router.push('/analytics')}
+                            className="px-4 py-2 bg-green-100 text-green-700 hover:bg-green-200 rounded-xl text-sm font-medium flex items-center gap-2 transition-all"
+                        >
+                            <BarChart3 size={18} />
+                            Аналитика
+                        </button>
+                        <button
+                            onClick={() => router.push('/categories')}
+                            className="px-4 py-2 bg-purple-100 text-purple-700 hover:bg-purple-200 rounded-xl text-sm font-medium flex items-center gap-2 transition-all"
+                        >
+                            <LayoutGrid size={18} />
+                            Категории
+                        </button>
+                        <button
+                            onClick={handleLogout}
+                            className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-xl transition-all"
+                        >
+                            <LogOut size={20} />
+                        </button>
+                    </div>
                 </div>
             </header>
 
@@ -134,8 +150,8 @@ export default function LeaderDashboard() {
                                     key={tab.id}
                                     onClick={() => setStatusFilter(tab.id)}
                                     className={`px-4 py-2 rounded-xl text-sm font-medium flex items-center gap-2 whitespace-nowrap transition-all ${statusFilter === tab.id
-                                            ? 'bg-gray-900 text-white'
-                                            : 'bg-white text-gray-600 hover:bg-gray-50 border border-gray-200'
+                                        ? 'bg-gray-900 text-white'
+                                        : 'bg-white text-gray-600 hover:bg-gray-50 border border-gray-200'
                                         }`}
                                 >
                                     <Icon size={16} />
@@ -150,8 +166,8 @@ export default function LeaderDashboard() {
                         <button
                             onClick={() => setExecutorFilter('all')}
                             className={`px-4 py-2 rounded-xl text-sm font-medium whitespace-nowrap transition-all ${executorFilter === 'all'
-                                    ? 'bg-purple-100 text-purple-700'
-                                    : 'bg-white text-gray-600 hover:bg-gray-50 border border-gray-200'
+                                ? 'bg-purple-100 text-purple-700'
+                                : 'bg-white text-gray-600 hover:bg-gray-50 border border-gray-200'
                                 }`}
                         >
                             Все исполнители
@@ -161,8 +177,8 @@ export default function LeaderDashboard() {
                                 key={executor.id}
                                 onClick={() => setExecutorFilter(executor.id)}
                                 className={`px-4 py-2 rounded-xl text-sm font-medium flex items-center gap-2 whitespace-nowrap transition-all ${executorFilter === executor.id
-                                        ? 'bg-purple-100 text-purple-700'
-                                        : 'bg-white text-gray-600 hover:bg-gray-50 border border-gray-200'
+                                    ? 'bg-purple-100 text-purple-700'
+                                    : 'bg-white text-gray-600 hover:bg-gray-50 border border-gray-200'
                                     }`}
                             >
                                 <span>{executor.avatar}</span>
