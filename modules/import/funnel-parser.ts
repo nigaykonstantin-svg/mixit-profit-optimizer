@@ -58,9 +58,21 @@ const COLUMN_MAP: Record<string, keyof FunnelRow> = {
 
 export function parseFunnelSheet(fileBuffer: Buffer): FunnelRow[] {
     const workbook = xlsx.read(fileBuffer, { cellDates: false });
-    const sheet = workbook.Sheets[workbook.SheetNames[3]]; // 4-ая вкладка
 
+    console.log('Available sheets:', workbook.SheetNames);
+
+    // Try to find "Товары" sheet or use 4th sheet
+    let sheetName = workbook.SheetNames.find(name => name.includes('Товары')) || workbook.SheetNames[3];
+    console.log('Using sheet:', sheetName);
+
+    const sheet = workbook.Sheets[sheetName];
     const json = xlsx.utils.sheet_to_json<Record<string, unknown>>(sheet);
+
+    console.log('Rows in sheet:', json.length);
+    if (json.length > 0) {
+        console.log('First row keys:', Object.keys(json[0]));
+        console.log('First row sample:', json[0]);
+    }
 
     return json.map((row) => {
         const result: Partial<FunnelRow> = {};
@@ -72,6 +84,12 @@ export function parseFunnelSheet(fileBuffer: Buffer): FunnelRow[] {
             if (!mappedKey) continue;
 
             let value = row[key];
+
+            // SKU is string, keep it as is
+            if (mappedKey === 'sku' || mappedKey === 'name' || mappedKey === 'brand') {
+                result[mappedKey] = String(value || '');
+                continue;
+            }
 
             // числа в нормальный формат
             if (typeof value === "string") {
