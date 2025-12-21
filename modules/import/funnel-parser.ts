@@ -24,37 +24,90 @@ export interface FunnelRow {
     drr_other: number;
 }
 
+// Flexible column map with lowercase normalized keys
 const COLUMN_MAP: Record<string, keyof FunnelRow> = {
-    // Basic info
-    "Артикул WB": "sku",
-    "Название": "name",
-    "Бренд": "brand",
+    // SKU
+    'артикул wb': 'sku',
+    'артикул продавца': 'sku',
+    'sku': 'sku',
 
-    // Funnel metrics - exact column names from WB export
-    "Показы": "views",
-    "Переходы в карточку": "clicks",
-    "Положили в корзину": "cart",
-    "Заказали, шт": "orders",
-    "CTR": "ctr",
-    "Конверсия в корзину, %": "cr_cart",
-    "Конверсия в заказ, %": "cr_order",
+    // Name & Brand
+    'название': 'name',
+    'бренд': 'brand',
 
-    // Price & Revenue
-    "Средняя цена, ₽": "avg_price",
-    "Заказали на сумму, ₽": "revenue",
-    "Выручка": "revenue",
+    // Views
+    'показы': 'views',
+    'просмотры': 'views',
+
+    // Clicks
+    'переходы в карточку': 'clicks',
+    'клики': 'clicks',
+
+    // Cart
+    'положили в корзину': 'cart',
+    'корзина': 'cart',
+    'в корзину': 'cart',
+
+    // Orders
+    'заказали': 'orders',
+    'заказы': 'orders',
+
+    // CTR
+    'ctr': 'ctr',
+
+    // CR
+    'конверсия в корзину': 'cr_cart',
+    'cr корзина': 'cr_cart',
+    'cr в корзину': 'cr_cart',
+    'конверсия в заказ': 'cr_order',
+    'cr заказов': 'cr_order',
+
+    // Price
+    'средняя цена': 'avg_price',
+    'цена': 'avg_price',
+
+    // Revenue
+    'заказали на сумму': 'revenue',
+    'выручка': 'revenue',
 
     // Stock
-    "Остатки МП, шт": "stock_units",
-    "Остатки": "stock_units",
-    "Остатки склад ВБ, шт": "stock_units",
+    'остатки мп': 'stock_units',
+    'остатки склад вб': 'stock_units',
+    'остатки склад': 'stock_units',
+    'остатки': 'stock_units',
 
-    // DRR (if exists)
-    "DRR Поиск": "drr_search",
-    "DRR Медиа": "drr_media",
-    "DRR Блогеры": "drr_bloggers",
-    "DRR остальное": "drr_other",
+    // DRR
+    'drr поиск': 'drr_search',
+    'drr медиа': 'drr_media',
+    'drr блогеры': 'drr_bloggers',
+    'drr остальное': 'drr_other',
 };
+
+/**
+ * Normalize header for comparison
+ */
+function normalizeHeader(h: string): string {
+    return h
+        .trim()
+        .toLowerCase()
+        .replace(/[\s_/()-]+/g, ' ')
+        .replace(/[₽%,шт]+/g, '')
+        .trim();
+}
+
+/**
+ * Find column mapping by checking if normalized header includes any key
+ */
+function findColumn(header: string): keyof FunnelRow | null {
+    const normalized = normalizeHeader(header);
+
+    for (const key in COLUMN_MAP) {
+        if (normalized.includes(key)) {
+            return COLUMN_MAP[key];
+        }
+    }
+    return null;
+}
 
 export function parseFunnelSheet(fileBuffer: Buffer): FunnelRow[] {
     const workbook = xlsx.read(fileBuffer, { cellDates: false });
@@ -62,7 +115,7 @@ export function parseFunnelSheet(fileBuffer: Buffer): FunnelRow[] {
     console.log('Available sheets:', workbook.SheetNames);
 
     // Try to find "Товары" sheet or use 4th sheet
-    let sheetName = workbook.SheetNames.find(name => name.includes('Товары')) || workbook.SheetNames[3];
+    const sheetName = workbook.SheetNames.find(name => name.includes('Товары')) || workbook.SheetNames[3];
     console.log('Using sheet:', sheetName);
 
     const sheet = workbook.Sheets[sheetName];
@@ -71,34 +124,40 @@ export function parseFunnelSheet(fileBuffer: Buffer): FunnelRow[] {
     console.log('Rows in sheet:', json.length);
     if (json.length > 0) {
         console.log('First row keys:', Object.keys(json[0]));
-        console.log('First row sample:', json[0]);
+        // Log which columns we can match
+        const headers = Object.keys(json[0]);
+        const matchedColumns: Record<string, string> = {};
+        for (const h of headers) {
+            const mapped = findColumn(h);
+            if (mapped) matchedColumns[h] = mapped;
+        }
+        console.log('Matched columns:', matchedColumns);
     }
 
     return json.map((row) => {
         const result: Partial<FunnelRow> = {};
 
         for (const key in row) {
-            const cleanKey = key.trim();
-            const mappedKey = COLUMN_MAP[cleanKey];
-
+            const mappedKey = findColumn(key);
             if (!mappedKey) continue;
 
-            let value = row[key];
+            const value = row[key];
 
-            // SKU is string, keep it as is
+            // String fields
             if (mappedKey === 'sku' || mappedKey === 'name' || mappedKey === 'brand') {
                 result[mappedKey] = String(value || '');
                 continue;
             }
 
-            // числа в нормальный формат
-            if (typeof value === "string") {
-                value = Number(
-                    value.replace("%", "").replace(",", ".").trim()
-                );
+            // Number fields
+            if (typeof value === 'number') {
+                (result as Record<string, unknown>)[mappedKey] = value;
+            } else if (typeof value === 'string') {
+                const parsed = Number(value.replace('%', '').replace(',', '.').trim());
+                (result as Record<string, unknown>)[mappedKey] = isNaN(parsed) ? 0 : parsed;
+            } else {
+                (result as Record<string, unknown>)[mappedKey] = 0;
             }
-
-            (result as Record<string, unknown>)[mappedKey] = value;
         }
 
         return result as FunnelRow;

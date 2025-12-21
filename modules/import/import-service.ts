@@ -236,23 +236,10 @@ export async function importExcelFile(
     }
 }
 /**
- * Save funnel data to wb_funnel table
+ * Map FunnelRow to database row format
  */
-export async function saveFunnelToDb(rows: FunnelRow[]): Promise<void> {
-    const supabase = getSupabaseClient();
-
-    // Delete all existing data
-    await supabase.from('wb_funnel').delete().neq('id', '00000000-0000-0000-0000-000000000000');
-
-    // Deduplicate by SKU (keep last occurrence)
-    const skuMap = new Map<string, FunnelRow>();
-    for (const row of rows) {
-        if (row.sku) {
-            skuMap.set(row.sku, row);
-        }
-    }
-
-    const uniqueRows = Array.from(skuMap.values()).map(row => ({
+function mapExcelRowToDatabaseRow(row: FunnelRow) {
+    return {
         sku: row.sku || '',
         name: row.name || '',
         brand: row.brand || '',
@@ -270,7 +257,27 @@ export async function saveFunnelToDb(rows: FunnelRow[]): Promise<void> {
         drr_media: row.drr_media || 0,
         drr_bloggers: row.drr_bloggers || 0,
         drr_other: row.drr_other || 0,
-    }));
+    };
+}
+
+/**
+ * Save funnel data to wb_funnel table
+ */
+export async function saveFunnelToDb(rows: FunnelRow[]): Promise<void> {
+    const supabase = getSupabaseClient();
+
+    // Delete all existing data
+    await supabase.from('wb_funnel').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+
+    // Deduplicate by SKU (keep last occurrence)
+    const skuMap = new Map<string, FunnelRow>();
+    for (const row of rows) {
+        if (row.sku) {
+            skuMap.set(row.sku, row);
+        }
+    }
+
+    const uniqueRows = Array.from(skuMap.values()).map(mapExcelRowToDatabaseRow);
 
     // Insert in batches
     const BATCH_SIZE = 500;
