@@ -240,14 +240,37 @@ export async function importExcelFile(
  */
 export async function saveFunnelToDb(rows: FunnelRow[]): Promise<void> {
     const supabase = getSupabaseClient();
+    const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
 
-    // Delete existing data first
-    await supabase.from('wb_funnel').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+    // Delete existing data for today only
+    await supabase.from('wb_funnel').delete().eq('date', today);
+
+    // Prepare rows with date
+    const rowsWithDate = rows.map(row => ({
+        date: today,
+        sku: row.sku || '',
+        name: row.name || '',
+        brand: row.brand || '',
+        views: row.views || 0,
+        clicks: row.clicks || 0,
+        cart: row.cart || 0,
+        orders: row.orders || 0,
+        ctr: row.ctr || 0,
+        cr_cart: row.cr_cart || 0,
+        cr_order: row.cr_order || 0,
+        avg_price: row.avg_price || 0,
+        revenue: row.revenue || 0,
+        stock_units: row.stock_units || 0,
+        drr_search: row.drr_search || 0,
+        drr_media: row.drr_media || 0,
+        drr_bloggers: row.drr_bloggers || 0,
+        drr_other: row.drr_other || 0,
+    }));
 
     // Insert new data in batches
     const BATCH_SIZE = 500;
-    for (let i = 0; i < rows.length; i += BATCH_SIZE) {
-        const batch = rows.slice(i, i + BATCH_SIZE);
+    for (let i = 0; i < rowsWithDate.length; i += BATCH_SIZE) {
+        const batch = rowsWithDate.slice(i, i + BATCH_SIZE);
         const { error } = await supabase.from('wb_funnel').insert(batch);
         if (error) throw error;
     }
