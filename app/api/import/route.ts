@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { parseExcelFile, parseWbFile, importToFact2026, ImportType } from '@/modules/import';
+import { parseExcelFile, parseWbFile, importToFact2026, saveFunnelToDb, ImportType } from '@/modules/import';
 import { parseFunnelSheet } from '@/modules/import/funnel-parser';
 import { analyzeFunnel } from '@/modules/analytics/funnel-metrics';
 
@@ -19,35 +19,21 @@ export async function POST(request: NextRequest) {
         // Read file as ArrayBuffer
         const buffer = await file.arrayBuffer();
 
-        // Handle WB Funnel type separately
+        // Handle WB Funnel type - save to wb_funnel table
         if (importType === 'wb_funnel') {
             const rows = parseFunnelSheet(Buffer.from(buffer));
+
+            // Save to wb_funnel table
+            await saveFunnelToDb(rows);
+
+            // Return analyzed data
             const analyzed = analyzeFunnel(rows);
 
-            // Save to Supabase fact2026
-            const today = new Date().toISOString().split('T')[0];
-            const records = analyzed.map(row => ({
-                date: today,
-                sku: row.sku,
-                price: row.price,
-                revenue: row.revenue,
-                views: row.views,
-                orders: row.orders,
-                ctr: row.ctr,
-                cr_order: row.cr_order,
-                stock: row.stock,
-                drr_search: row.total_drr,
-                source: 'wb_funnel',
-            }));
-
-            const importResult = await importToFact2026(records);
-
             return NextResponse.json({
-                success: importResult.success,
+                success: true,
                 rows: analyzed,
                 recordsProcessed: rows.length,
-                recordsImported: importResult.recordsImported,
-                errors: importResult.errors,
+                recordsImported: rows.length,
             });
         }
 

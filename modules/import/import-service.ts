@@ -2,6 +2,7 @@
 
 import * as XLSX from 'xlsx';
 import { getSupabaseClient, isSupabaseConfigured } from '@/analytics-engine/supabase/supabase-client';
+import { FunnelRow } from './funnel-parser';
 
 /**
  * FACT2026 record structure
@@ -233,4 +234,17 @@ export async function importExcelFile(
             errors: [`Parse error: ${String(err)}`],
         };
     }
+}
+
+/**
+ * Save funnel data to wb_funnel table
+ */
+export async function saveFunnelToDb(rows: FunnelRow[]): Promise<void> {
+    const supabase = getSupabaseClient();
+
+    const { error } = await supabase
+        .from('wb_funnel')
+        .upsert(rows, { onConflict: 'sku' });
+
+    if (error) throw error;
 }
