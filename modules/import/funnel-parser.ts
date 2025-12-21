@@ -25,7 +25,7 @@ export interface FunnelRow {
 }
 
 // Flexible column map with lowercase normalized keys
-export const COLUMN_MAP: Record<string, keyof FunnelRow> = {
+const COLUMN_MAP: Record<string, keyof FunnelRow> = {
     // SKU
     'артикул wb': 'sku',
     'артикул': 'sku',
