@@ -19,19 +19,10 @@ import {
     ChevronRight,
     ArrowUpDown,
     ArrowUp,
-    ArrowDown
+    ArrowDown,
+    Loader2
 } from 'lucide-react';
 import { AnalyzedFunnelRow } from '@/modules/analytics/funnel-metrics';
-
-// Mock data for demonstration (will be replaced with real data)
-const MOCK_FUNNEL_DATA: AnalyzedFunnelRow[] = [
-    { sku: '123456789', revenue: 450000, views: 15000, orders: 120, ctr: 3.2, cr_order: 0.8, revenue_per_view: 30, cpc: 375, conversion_quality: 'Normal', stock: 150, price: 3750, total_drr: 12 },
-    { sku: '987654321', revenue: 280000, views: 22000, orders: 85, ctr: 2.8, cr_order: 0.4, revenue_per_view: 12.7, cpc: 127, conversion_quality: 'Overpriced', stock: 200, price: 3294, total_drr: 28 },
-    { sku: '456789123', revenue: 95000, views: 8000, orders: 45, ctr: 4.1, cr_order: 0.6, revenue_per_view: 11.9, cpc: 290, conversion_quality: 'Low stock', stock: 8, price: 2111, total_drr: 15 },
-    { sku: '111222333', revenue: 520000, views: 18000, orders: 150, ctr: 3.8, cr_order: 0.9, revenue_per_view: 28.9, cpc: 400, conversion_quality: 'Normal', stock: 280, price: 3467, total_drr: 10 },
-    { sku: '444555666', revenue: 180000, views: 25000, orders: 60, ctr: 2.2, cr_order: 0.3, revenue_per_view: 7.2, cpc: 100, conversion_quality: 'Overpriced', stock: 320, price: 3000, total_drr: 35 },
-    { sku: '777888999', revenue: 75000, views: 6000, orders: 30, ctr: 3.5, cr_order: 0.5, revenue_per_view: 12.5, cpc: 250, conversion_quality: 'Low stock', stock: 5, price: 2500, total_drr: 18 },
-];
 
 type QualityFilter = 'all' | 'normal' | 'low_stock' | 'overpriced' | 'high_drr';
 type SortField = 'sku' | 'revenue' | 'views' | 'orders' | 'ctr' | 'cr_order' | 'total_drr' | 'stock';
@@ -43,13 +34,30 @@ export default function FunnelPage() {
     const router = useRouter();
     const [user, setUser] = useState<AuthUser | null>(null);
     const [mounted, setMounted] = useState(false);
-    const [data] = useState<AnalyzedFunnelRow[]>(MOCK_FUNNEL_DATA);
+    const [data, setData] = useState<AnalyzedFunnelRow[]>([]);
+    const [loading, setLoading] = useState(true);
 
     // Pagination, search, filter, sort state
     const [page, setPage] = useState(1);
     const [search, setSearch] = useState('');
     const [filter, setFilter] = useState<QualityFilter>('all');
     const [sort, setSort] = useState<{ field: SortField; dir: SortDir }>({ field: 'revenue', dir: 'desc' });
+
+    // Fetch data from API
+    const fetchData = async () => {
+        setLoading(true);
+        try {
+            const response = await fetch('/api/funnel');
+            const result = await response.json();
+            if (result.success && result.rows) {
+                setData(result.rows);
+            }
+        } catch (error) {
+            console.error('Failed to fetch funnel data:', error);
+        } finally {
+            setLoading(false);
+        }
+    };
 
     useEffect(() => {
         setMounted(true);
@@ -59,6 +67,7 @@ export default function FunnelPage() {
             return;
         }
         setUser(currentUser);
+        fetchData();
     }, [router]);
 
     // Filtered, sorted, paginated data
@@ -130,6 +139,17 @@ export default function FunnelPage() {
 
     if (!mounted || !user) {
         return null;
+    }
+
+    if (loading) {
+        return (
+            <div className="min-h-screen bg-gradient-to-br from-violet-50 via-white to-purple-50 flex items-center justify-center">
+                <div className="flex items-center gap-3 text-gray-600">
+                    <Loader2 className="animate-spin" size={24} />
+                    <span>Загрузка данных...</span>
+                </div>
+            </div>
+        );
     }
 
     return (
@@ -349,8 +369,8 @@ export default function FunnelPage() {
                                         key={i}
                                         onClick={() => setPage(i + 1)}
                                         className={`px-3 py-1.5 rounded-lg text-sm transition-all ${page === i + 1
-                                                ? 'bg-gray-900 text-white'
-                                                : 'border border-gray-200 hover:bg-gray-50'
+                                            ? 'bg-gray-900 text-white'
+                                            : 'border border-gray-200 hover:bg-gray-50'
                                             }`}
                                     >
                                         {i + 1}
