@@ -242,9 +242,6 @@ export async function saveFunnelToDb(rows: FunnelRow[]): Promise<void> {
     const supabase = getSupabaseClient();
     const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
 
-    // Delete existing data for today only
-    await supabase.from('wb_funnel').delete().eq('date', today);
-
     // Prepare rows with date
     const rowsWithDate = rows.map(row => ({
         date: today,
@@ -267,11 +264,14 @@ export async function saveFunnelToDb(rows: FunnelRow[]): Promise<void> {
         drr_other: row.drr_other || 0,
     }));
 
-    // Insert new data in batches
+    // Upsert in batches
     const BATCH_SIZE = 500;
     for (let i = 0; i < rowsWithDate.length; i += BATCH_SIZE) {
         const batch = rowsWithDate.slice(i, i + BATCH_SIZE);
-        const { error } = await supabase.from('wb_funnel').insert(batch);
+        const { error } = await supabase
+            .from('wb_funnel')
+            .upsert(batch, { onConflict: 'sku,date' });
         if (error) throw error;
     }
 }
+
