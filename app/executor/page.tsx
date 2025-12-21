@@ -2,24 +2,23 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import { getCurrentUser, logout, AuthUser } from '@/lib/auth';
-import { getTasks } from '@/lib/tasks';
-import { Task, TaskStatus } from '@/lib/data';
-import { TaskCard } from '@/components/task-card';
+import { getCurrentUser, logout, AuthUser } from '@/modules/auth';
+import { getTasks, TaskCard, Task, TaskStatus, TASK_STATUSES } from '@/modules/tasks';
+import { USER_ROLES } from '@/modules/users';
 import { LogOut, Clock, Play, CheckCircle2 } from 'lucide-react';
 
 const STATUS_TABS: { id: TaskStatus | 'all'; label: string; icon: typeof Clock; color: string }[] = [
     { id: 'all', label: 'Все', icon: Clock, color: 'bg-gray-100 text-gray-700' },
-    { id: 'pending', label: 'Новые', icon: Clock, color: 'bg-yellow-100 text-yellow-700' },
-    { id: 'in_progress', label: 'В работе', icon: Play, color: 'bg-blue-100 text-blue-700' },
-    { id: 'done', label: 'Готово', icon: CheckCircle2, color: 'bg-green-100 text-green-700' },
+    { id: TASK_STATUSES.NEW, label: 'Новые', icon: Clock, color: 'bg-yellow-100 text-yellow-700' },
+    { id: TASK_STATUSES.IN_PROGRESS, label: 'В работе', icon: Play, color: 'bg-blue-100 text-blue-700' },
+    { id: TASK_STATUSES.DONE, label: 'Готово', icon: CheckCircle2, color: 'bg-green-100 text-green-700' },
 ];
 
 export default function ExecutorDashboard() {
     const router = useRouter();
     const [user, setUser] = useState<AuthUser | null>(null);
     const [tasks, setTasks] = useState<Task[]>([]);
-    const [statusFilter, setStatusFilter] = useState<TaskStatus | 'all'>('pending');
+    const [statusFilter, setStatusFilter] = useState<TaskStatus | 'all'>(TASK_STATUSES.NEW);
     const [mounted, setMounted] = useState(false);
 
     const refreshTasks = useCallback(() => {
@@ -29,7 +28,7 @@ export default function ExecutorDashboard() {
     useEffect(() => {
         setMounted(true);
         const currentUser = getCurrentUser();
-        if (!currentUser || currentUser.role !== 'executor') {
+        if (!currentUser || currentUser.role !== USER_ROLES.EXECUTOR) {
             router.push('/');
             return;
         }
@@ -51,9 +50,9 @@ export default function ExecutorDashboard() {
 
     // Stats
     const stats = {
-        pending: myTasks.filter((t) => t.status === 'pending').length,
-        in_progress: myTasks.filter((t) => t.status === 'in_progress').length,
-        done: myTasks.filter((t) => t.status === 'done').length,
+        [TASK_STATUSES.NEW]: myTasks.filter((t) => t.status === TASK_STATUSES.NEW).length,
+        [TASK_STATUSES.IN_PROGRESS]: myTasks.filter((t) => t.status === TASK_STATUSES.IN_PROGRESS).length,
+        [TASK_STATUSES.DONE]: myTasks.filter((t) => t.status === TASK_STATUSES.DONE).length,
     };
 
     if (!mounted || !user) {
@@ -85,15 +84,15 @@ export default function ExecutorDashboard() {
                 {/* Quick Stats */}
                 <div className="grid grid-cols-3 gap-3">
                     <div className="bg-yellow-50 rounded-2xl p-4 text-center border border-yellow-100">
-                        <p className="text-2xl font-bold text-yellow-700">{stats.pending}</p>
+                        <p className="text-2xl font-bold text-yellow-700">{stats[TASK_STATUSES.NEW]}</p>
                         <p className="text-xs text-yellow-600">Новых</p>
                     </div>
                     <div className="bg-blue-50 rounded-2xl p-4 text-center border border-blue-100">
-                        <p className="text-2xl font-bold text-blue-700">{stats.in_progress}</p>
+                        <p className="text-2xl font-bold text-blue-700">{stats[TASK_STATUSES.IN_PROGRESS]}</p>
                         <p className="text-xs text-blue-600">В работе</p>
                     </div>
                     <div className="bg-green-50 rounded-2xl p-4 text-center border border-green-100">
-                        <p className="text-2xl font-bold text-green-700">{stats.done}</p>
+                        <p className="text-2xl font-bold text-green-700">{stats[TASK_STATUSES.DONE]}</p>
                         <p className="text-xs text-green-600">Готово</p>
                     </div>
                 </div>
@@ -141,9 +140,9 @@ export default function ExecutorDashboard() {
                     <div className="text-center py-12">
                         <div className="text-4xl mb-3">🎉</div>
                         <p className="text-gray-500">
-                            {statusFilter === 'pending'
+                            {statusFilter === TASK_STATUSES.NEW
                                 ? 'Нет новых задач!'
-                                : statusFilter === 'in_progress'
+                                : statusFilter === TASK_STATUSES.IN_PROGRESS
                                     ? 'Нет задач в работе'
                                     : 'Нет задач по выбранным фильтрам'}
                         </p>

@@ -1,13 +1,13 @@
 'use client';
 
-import { UserId, USERS } from './data';
+import { UserId, USERS, UserRole } from '@/modules/users';
 
 const AUTH_KEY = 'mixit_auth';
 
 export interface AuthUser {
     id: UserId;
     name: string;
-    role: 'leader' | 'executor';
+    role: UserRole;
     avatar: string;
 }
 

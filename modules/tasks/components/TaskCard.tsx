@@ -1,7 +1,8 @@
 'use client';
 
-import { Task, TASK_TYPES, USERS, TaskStatus, UserId } from '@/lib/data';
-import { updateTaskStatus, deleteTask } from '@/lib/tasks';
+import { Task, TaskStatus, TASK_TYPE_CONFIG, TASK_STATUS_CONFIG, TASK_STATUSES } from '@/modules/tasks/task-model';
+import { updateTaskStatus, deleteTask } from '@/modules/tasks/task-service';
+import { USERS, UserId } from '@/modules/users';
 import { Clock, CheckCircle2, Play, Trash2 } from 'lucide-react';
 
 interface TaskCardProps {
@@ -10,17 +11,17 @@ interface TaskCardProps {
     onStatusChange?: () => void;
 }
 
-const STATUS_CONFIG: Record<TaskStatus, { label: string; icon: typeof Clock; className: string }> = {
-    pending: { label: 'Ожидает', icon: Clock, className: 'bg-gray-100 text-gray-600' },
-    in_progress: { label: 'В работе', icon: Play, className: 'bg-blue-100 text-blue-600' },
-    done: { label: 'Готово', icon: CheckCircle2, className: 'bg-green-100 text-green-600' },
+const ICONS = {
+    Clock,
+    Play,
+    CheckCircle2,
 };
 
 export function TaskCard({ task, isLeader = false, onStatusChange }: TaskCardProps) {
-    const taskType = TASK_TYPES[task.type];
+    const taskType = TASK_TYPE_CONFIG[task.type];
     const executor = USERS[task.executor as UserId];
-    const statusConfig = STATUS_CONFIG[task.status];
-    const StatusIcon = statusConfig.icon;
+    const statusConfig = TASK_STATUS_CONFIG[task.status];
+    const StatusIcon = ICONS[statusConfig.iconName as keyof typeof ICONS];
 
     const handleStatusChange = (newStatus: TaskStatus) => {
         updateTaskStatus(task.id, newStatus);
@@ -66,19 +67,19 @@ export function TaskCard({ task, isLeader = false, onStatusChange }: TaskCardPro
             </div>
 
             {/* Actions for executors */}
-            {!isLeader && task.status !== 'done' && (
+            {!isLeader && task.status !== TASK_STATUSES.DONE && (
                 <div className="flex gap-2 mt-4">
-                    {task.status === 'pending' && (
+                    {task.status === TASK_STATUSES.NEW && (
                         <button
-                            onClick={() => handleStatusChange('in_progress')}
+                            onClick={() => handleStatusChange(TASK_STATUSES.IN_PROGRESS)}
                             className="flex-1 py-2 px-4 bg-blue-500 text-white rounded-xl text-sm font-medium hover:bg-blue-600 transition-colors"
                         >
                             Начать
                         </button>
                     )}
-                    {task.status === 'in_progress' && (
+                    {task.status === TASK_STATUSES.IN_PROGRESS && (
                         <button
-                            onClick={() => handleStatusChange('done')}
+                            onClick={() => handleStatusChange(TASK_STATUSES.DONE)}
                             className="flex-1 py-2 px-4 bg-green-500 text-white rounded-xl text-sm font-medium hover:bg-green-600 transition-colors"
                         >
                             Готово

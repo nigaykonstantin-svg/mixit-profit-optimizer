@@ -2,18 +2,16 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import { getCurrentUser, logout, AuthUser } from '@/lib/auth';
-import { getTasks } from '@/lib/tasks';
-import { Task, USERS, UserId, TaskStatus } from '@/lib/data';
-import { TaskCard } from '@/components/task-card';
-import { QuickTask } from '@/components/quick-task';
+import { getCurrentUser, logout, AuthUser } from '@/modules/auth';
+import { getTasks, TaskCard, QuickTask, Task, TASK_STATUSES, TaskStatus } from '@/modules/tasks';
+import { USERS, UserId, getExecutors, USER_ROLES } from '@/modules/users';
 import { LogOut, Filter, Clock, Play, CheckCircle2 } from 'lucide-react';
 
 const STATUS_TABS: { id: TaskStatus | 'all'; label: string; icon: typeof Clock }[] = [
     { id: 'all', label: 'Все', icon: Filter },
-    { id: 'pending', label: 'Ожидают', icon: Clock },
-    { id: 'in_progress', label: 'В работе', icon: Play },
-    { id: 'done', label: 'Готово', icon: CheckCircle2 },
+    { id: TASK_STATUSES.NEW, label: 'Ожидают', icon: Clock },
+    { id: TASK_STATUSES.IN_PROGRESS, label: 'В работе', icon: Play },
+    { id: TASK_STATUSES.DONE, label: 'Готово', icon: CheckCircle2 },
 ];
 
 export default function LeaderDashboard() {
@@ -31,7 +29,7 @@ export default function LeaderDashboard() {
     useEffect(() => {
         setMounted(true);
         const currentUser = getCurrentUser();
-        if (!currentUser || currentUser.role !== 'leader') {
+        if (!currentUser || currentUser.role !== USER_ROLES.LEADER) {
             router.push('/');
             return;
         }
@@ -50,15 +48,13 @@ export default function LeaderDashboard() {
         return true;
     });
 
-    const executors = Object.entries(USERS)
-        .filter(([, u]) => u.role === 'executor')
-        .map(([id, u]) => ({ id, ...u }));
+    const executors = getExecutors();
 
     // Stats
     const stats = {
-        pending: tasks.filter((t) => t.status === 'pending').length,
-        in_progress: tasks.filter((t) => t.status === 'in_progress').length,
-        done: tasks.filter((t) => t.status === 'done').length,
+        pending: tasks.filter((t) => t.status === TASK_STATUSES.NEW).length,
+        in_progress: tasks.filter((t) => t.status === TASK_STATUSES.IN_PROGRESS).length,
+        done: tasks.filter((t) => t.status === TASK_STATUSES.DONE).length,
     };
 
     if (!mounted || !user) {

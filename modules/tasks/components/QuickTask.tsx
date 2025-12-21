@@ -1,8 +1,9 @@
 'use client';
 
 import { useState } from 'react';
-import { TASK_TYPES, TaskType, CATEGORIES, USERS, UserId } from '@/lib/data';
-import { addTask } from '@/lib/tasks';
+import { TaskType, TASK_TYPE_CONFIG, CATEGORIES, TASK_STATUSES } from '@/modules/tasks/task-model';
+import { addTask } from '@/modules/tasks/task-service';
+import { USERS, UserId } from '@/modules/users';
 import { Plus, X } from 'lucide-react';
 
 interface QuickTaskProps {
@@ -22,8 +23,8 @@ export function QuickTask({ onTaskAdded }: QuickTaskProps) {
         addTask({
             type: selectedType,
             title: title.trim(),
-            executor: TASK_TYPES[selectedType].executor,
-            status: 'pending',
+            executor: TASK_TYPE_CONFIG[selectedType].executor,
+            status: TASK_STATUSES.NEW,
             category: category || undefined,
         });
 
@@ -34,7 +35,7 @@ export function QuickTask({ onTaskAdded }: QuickTaskProps) {
         onTaskAdded();
     };
 
-    const selectedExecutor = selectedType ? USERS[TASK_TYPES[selectedType].executor as UserId] : null;
+    const selectedExecutor = selectedType ? USERS[TASK_TYPE_CONFIG[selectedType].executor as UserId] : null;
 
     if (!isOpen) {
         return (
@@ -67,14 +68,14 @@ export function QuickTask({ onTaskAdded }: QuickTaskProps) {
                         Тип задачи
                     </label>
                     <div className="grid grid-cols-2 gap-2">
-                        {Object.entries(TASK_TYPES).map(([key, value]) => (
+                        {Object.entries(TASK_TYPE_CONFIG).map(([key, value]) => (
                             <button
                                 key={key}
                                 type="button"
                                 onClick={() => setSelectedType(key as TaskType)}
                                 className={`p-3 rounded-xl text-sm font-medium transition-all ${selectedType === key
-                                        ? `${value.color} text-white shadow-md`
-                                        : 'bg-gray-50 text-gray-700 hover:bg-gray-100'
+                                    ? `${value.color} text-white shadow-md`
+                                    : 'bg-gray-50 text-gray-700 hover:bg-gray-100'
                                     }`}
                             >
                                 {value.label}
@@ -119,8 +120,8 @@ export function QuickTask({ onTaskAdded }: QuickTaskProps) {
                                 type="button"
                                 onClick={() => setCategory(category === cat ? '' : cat)}
                                 className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${category === cat
-                                        ? 'bg-gray-900 text-white'
-                                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                                    ? 'bg-gray-900 text-white'
+                                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                                     }`}
                             >
                                 {cat}
