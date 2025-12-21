@@ -22,12 +22,32 @@ export async function POST(request: NextRequest) {
         // Handle WB Funnel type separately
         if (importType === 'wb_funnel') {
             const rows = parseFunnelSheet(Buffer.from(buffer));
-            const result = analyzeFunnel(rows);
+            const analyzed = analyzeFunnel(rows);
+
+            // Save to Supabase fact2026
+            const today = new Date().toISOString().split('T')[0];
+            const records = analyzed.map(row => ({
+                date: today,
+                sku: row.sku,
+                price: row.price,
+                revenue: row.revenue,
+                views: row.views,
+                orders: row.orders,
+                ctr: row.ctr,
+                cr_order: row.cr_order,
+                stock: row.stock,
+                drr_search: row.total_drr,
+                source: 'wb_funnel',
+            }));
+
+            const importResult = await importToFact2026(records);
+
             return NextResponse.json({
-                success: true,
-                rows: result,
+                success: importResult.success,
+                rows: analyzed,
                 recordsProcessed: rows.length,
-                recordsImported: result.length,
+                recordsImported: importResult.recordsImported,
+                errors: importResult.errors,
             });
         }
 
