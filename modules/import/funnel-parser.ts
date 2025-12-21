@@ -25,10 +25,10 @@ export interface FunnelRow {
 }
 
 // Flexible column map with lowercase normalized keys
-const COLUMN_MAP: Record<string, keyof FunnelRow> = {
+export const COLUMN_MAP: Record<string, keyof FunnelRow> = {
     // SKU
     'артикул wb': 'sku',
-    'артикул продавца': 'sku',
+    'артикул': 'sku',
     'sku': 'sku',
 
     // Name & Brand
@@ -36,45 +36,42 @@ const COLUMN_MAP: Record<string, keyof FunnelRow> = {
     'бренд': 'brand',
 
     // Views
-    'показы': 'views',
     'просмотры': 'views',
+    'показы': 'views',
+    'views': 'views',
 
     // Clicks
-    'переходы в карточку': 'clicks',
     'клики': 'clicks',
+    'переходы': 'clicks',
+    'clicks': 'clicks',
 
     // Cart
-    'положили в корзину': 'cart',
     'корзина': 'cart',
-    'в корзину': 'cart',
 
     // Orders
-    'заказали': 'orders',
     'заказы': 'orders',
+    'заказали': 'orders',
 
     // CTR
     'ctr': 'ctr',
 
     // CR
-    'конверсия в корзину': 'cr_cart',
     'cr корзина': 'cr_cart',
-    'cr в корзину': 'cr_cart',
-    'конверсия в заказ': 'cr_order',
+    'конверсия в корзину': 'cr_cart',
     'cr заказов': 'cr_order',
+    'конверсия в заказ': 'cr_order',
 
     // Price
     'средняя цена': 'avg_price',
     'цена': 'avg_price',
 
     // Revenue
-    'заказали на сумму': 'revenue',
     'выручка': 'revenue',
+    'revenue': 'revenue',
 
     // Stock
-    'остатки мп': 'stock_units',
-    'остатки склад вб': 'stock_units',
-    'остатки склад': 'stock_units',
     'остатки': 'stock_units',
+    'stock': 'stock_units',
 
     // DRR
     'drr поиск': 'drr_search',
