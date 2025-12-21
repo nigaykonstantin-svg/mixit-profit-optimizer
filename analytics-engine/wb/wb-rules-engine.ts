@@ -1,6 +1,6 @@
 // WB Rules Engine - Business rules and signal generation
 
-import { WbSale, WbStock, WbAdvertising } from './wb-types';
+import { WbSkuData } from './wb-types';
 import { WB_CONFIG, StockLevel, MarginLevel, GrowthLevel } from './wb-config';
 
 // Signal types
@@ -10,6 +10,7 @@ export type SignalCategory = 'stock' | 'margin' | 'advertising' | 'growth' | 'pr
 export interface Signal {
     id: string;
     sku: string;
+    skuName: string;
     category: SignalCategory;
     severity: SignalSeverity;
     title: string;
@@ -20,8 +21,10 @@ export interface Signal {
     timestamp: string;
 }
 
-// Evaluate stock level for a SKU
-export function evaluateStockLevel(daysOfStock: number): StockLevel {
+// Evaluate stock level based on units
+export function evaluateStockLevel(stockUnits: number, avgDailySales: number): StockLevel {
+    if (avgDailySales === 0) return 'high';
+    const daysOfStock = stockUnits / avgDailySales;
     const { stockThresholds } = WB_CONFIG;
     if (daysOfStock <= stockThresholds.critical) return 'critical';
     if (daysOfStock <= stockThresholds.low) return 'low';
@@ -29,7 +32,7 @@ export function evaluateStockLevel(daysOfStock: number): StockLevel {
     return 'high';
 }
 
-// Evaluate margin level for a SKU
+// Evaluate margin level
 export function evaluateMarginLevel(marginPercent: number): MarginLevel {
     const { marginThresholds } = WB_CONFIG;
     if (marginPercent <= marginThresholds.critical) return 'critical';
@@ -38,7 +41,7 @@ export function evaluateMarginLevel(marginPercent: number): MarginLevel {
     return 'high';
 }
 
-// Evaluate growth level for a SKU
+// Evaluate growth level
 export function evaluateGrowthLevel(growthPercent: number): GrowthLevel {
     const { growthThresholds } = WB_CONFIG;
     if (growthPercent <= growthThresholds.declining) return 'declining';
@@ -47,37 +50,53 @@ export function evaluateGrowthLevel(growthPercent: number): GrowthLevel {
     return 'rapid';
 }
 
-// Generate stock signals
-export function generateStockSignals(stocks: WbStock[]): Signal[] {
-    const signals: Signal[] = [];
+// Calculate total DRR from all advertising sources
+export function calculateTotalDrr(data: WbSkuData): number {
+    const { advertising } = data;
+    return (
+        advertising.ad_search_drr +
+        advertising.ad_media_drr +
+        advertising.ad_bloggers_drr +
+        advertising.ad_other_drr
+    );
+}
 
-    for (const stock of stocks) {
-        const level = evaluateStockLevel(stock.daysOfStock);
+// Generate stock signals
+export function generateStockSignals(data: WbSkuData[], avgDailySales: Map<string, number>): Signal[] {
+    const signals: Signal[] = [];
+    const { stockThresholds } = WB_CONFIG;
+
+    for (const item of data) {
+        const dailySales = avgDailySales.get(item.sku.sku) ?? 1;
+        const daysOfStock = dailySales > 0 ? item.stock.stock_units / dailySales : 999;
+        const level = evaluateStockLevel(item.stock.stock_units, dailySales);
 
         if (level === 'critical') {
             signals.push({
-                id: `stock-critical-${stock.sku}`,
-                sku: stock.sku,
+                id: `stock-critical-${item.sku.sku}`,
+                sku: item.sku.sku,
+                skuName: item.sku.name,
                 category: 'stock',
                 severity: 'critical',
                 title: 'Критический уровень запасов',
-                description: `Запасов осталось на ${stock.daysOfStock} дней`,
+                description: `Запасов на ${Math.round(daysOfStock)} дней (${item.stock.stock_units} шт)`,
                 recommendation: 'Срочно пополнить склад',
-                value: stock.daysOfStock,
-                threshold: WB_CONFIG.stockThresholds.critical,
+                value: daysOfStock,
+                threshold: stockThresholds.critical,
                 timestamp: new Date().toISOString(),
             });
         } else if (level === 'low') {
             signals.push({
-                id: `stock-low-${stock.sku}`,
-                sku: stock.sku,
+                id: `stock-low-${item.sku.sku}`,
+                sku: item.sku.sku,
+                skuName: item.sku.name,
                 category: 'stock',
                 severity: 'warning',
                 title: 'Низкий уровень запасов',
-                description: `Запасов осталось на ${stock.daysOfStock} дней`,
+                description: `Запасов на ${Math.round(daysOfStock)} дней (${item.stock.stock_units} шт)`,
                 recommendation: 'Запланировать поставку',
-                value: stock.daysOfStock,
-                threshold: WB_CONFIG.stockThresholds.low,
+                value: daysOfStock,
+                threshold: stockThresholds.low,
                 timestamp: new Date().toISOString(),
             });
         }
@@ -87,37 +106,84 @@ export function generateStockSignals(stocks: WbStock[]): Signal[] {
 }
 
 // Generate advertising signals
-export function generateAdvertisingSignals(ads: WbAdvertising[]): Signal[] {
+export function generateAdvertisingSignals(data: WbSkuData[]): Signal[] {
     const signals: Signal[] = [];
     const { advertisingThresholds } = WB_CONFIG;
 
-    for (const ad of ads) {
-        if (ad.drr > advertisingThresholds.maxDrr) {
+    for (const item of data) {
+        const totalDrr = calculateTotalDrr(item);
+
+        if (totalDrr > advertisingThresholds.maxDrr) {
             signals.push({
-                id: `ads-drr-high-${ad.sku}`,
-                sku: ad.sku,
+                id: `ads-drr-high-${item.sku.sku}`,
+                sku: item.sku.sku,
+                skuName: item.sku.name,
                 category: 'advertising',
                 severity: 'warning',
                 title: 'Высокий ДРР',
-                description: `ДРР ${ad.drr}% превышает максимум ${advertisingThresholds.maxDrr}%`,
+                description: `Общий ДРР ${totalDrr.toFixed(1)}% превышает максимум ${advertisingThresholds.maxDrr}%`,
                 recommendation: 'Снизить ставки или оптимизировать кампанию',
-                value: ad.drr,
+                value: totalDrr,
                 threshold: advertisingThresholds.maxDrr,
                 timestamp: new Date().toISOString(),
             });
         }
 
-        if (ad.ctr < advertisingThresholds.minCtr) {
+        if (item.order.ctr < advertisingThresholds.minCtr && item.order.views > 100) {
             signals.push({
-                id: `ads-ctr-low-${ad.sku}`,
-                sku: ad.sku,
+                id: `ads-ctr-low-${item.sku.sku}`,
+                sku: item.sku.sku,
+                skuName: item.sku.name,
                 category: 'advertising',
                 severity: 'info',
                 title: 'Низкий CTR',
-                description: `CTR ${ad.ctr}% ниже минимума ${advertisingThresholds.minCtr}%`,
+                description: `CTR ${item.order.ctr.toFixed(2)}% ниже минимума ${advertisingThresholds.minCtr}%`,
                 recommendation: 'Улучшить креативы или таргетинг',
-                value: ad.ctr,
+                value: item.order.ctr,
                 threshold: advertisingThresholds.minCtr,
+                timestamp: new Date().toISOString(),
+            });
+        }
+    }
+
+    return signals;
+}
+
+// Generate margin signals
+export function generateMarginSignals(data: WbSkuData[]): Signal[] {
+    const signals: Signal[] = [];
+    const { marginThresholds } = WB_CONFIG;
+
+    for (const item of data) {
+        const margin = item.sale.profit_margin_before_mkt;
+        const level = evaluateMarginLevel(margin);
+
+        if (level === 'critical') {
+            signals.push({
+                id: `margin-critical-${item.sku.sku}`,
+                sku: item.sku.sku,
+                skuName: item.sku.name,
+                category: 'margin',
+                severity: 'critical',
+                title: 'Критическая маржинальность',
+                description: `Маржа ${margin.toFixed(1)}% ниже критического уровня ${marginThresholds.critical}%`,
+                recommendation: 'Пересмотреть цену или снизить расходы',
+                value: margin,
+                threshold: marginThresholds.critical,
+                timestamp: new Date().toISOString(),
+            });
+        } else if (level === 'low') {
+            signals.push({
+                id: `margin-low-${item.sku.sku}`,
+                sku: item.sku.sku,
+                skuName: item.sku.name,
+                category: 'margin',
+                severity: 'warning',
+                title: 'Низкая маржинальность',
+                description: `Маржа ${margin.toFixed(1)}% ниже целевого уровня ${marginThresholds.low}%`,
+                recommendation: 'Рассмотреть оптимизацию расходов',
+                value: margin,
+                threshold: marginThresholds.low,
                 timestamp: new Date().toISOString(),
             });
         }
@@ -128,11 +194,12 @@ export function generateAdvertisingSignals(ads: WbAdvertising[]): Signal[] {
 
 // Run all rules and generate signals
 export function runRulesEngine(
-    stocks: WbStock[],
-    ads: WbAdvertising[]
+    data: WbSkuData[],
+    avgDailySales: Map<string, number> = new Map()
 ): Signal[] {
     return [
-        ...generateStockSignals(stocks),
-        ...generateAdvertisingSignals(ads),
+        ...generateStockSignals(data, avgDailySales),
+        ...generateAdvertisingSignals(data),
+        ...generateMarginSignals(data),
     ];
 }

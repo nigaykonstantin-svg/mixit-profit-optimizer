@@ -1,61 +1,89 @@
-// WB Types - Wildberries data types
+// WB Types - Wildberries data types matching Excel export structure
 
+/**
+ * SKU (Stock Keeping Unit) - товарная позиция
+ */
 export interface WbSku {
     sku: string;
-    name: string;
-    brand: string;
     category: string;
     subcategory: string;
-    price: number;
-    costPrice: number;
-    stock: number;
+    name: string;
+    legal_entity: string;
 }
 
+/**
+ * Sale - данные по продажам
+ */
 export interface WbSale {
-    date: string;
-    sku: string;
-    quantity: number;
-    revenue: number;
-    profit: number;
-    commission: number;
-    logistics: number;
+    date: string; // YYYY-MM-DD
+    revenue_gross: number;
+    revenue_vat: number;
+    revenue_per_view: number;
+    price_retail: number;
+    price_buyer: number;
+    price_per_unit_profit_before_mkt: number;
+    profit_before_mkt: number;
+    profit_before_mkt_per_unit: number;
+    profit_before_mkt_per_view: number;
+    profit_margin_before_mkt: number;
 }
 
+/**
+ * Order - данные по заказам и конверсии
+ */
 export interface WbOrder {
-    orderId: string;
-    date: string;
-    sku: string;
-    quantity: number;
-    price: number;
-    status: 'pending' | 'delivered' | 'returned' | 'cancelled';
-}
-
-export interface WbStock {
-    sku: string;
-    warehouse: string;
-    quantity: number;
-    daysOfStock: number;
-}
-
-export interface WbAdvertising {
-    campaignId: string;
-    sku: string;
-    spend: number;
-    impressions: number;
     clicks: number;
+    views: number;
+    cart: number;
     orders: number;
-    cpc: number;
     ctr: number;
-    drr: number;
+    cr_cart: number;
+    cr_order: number;
 }
 
-export interface WbReport {
-    period: {
-        from: string;
-        to: string;
-    };
-    sales: WbSale[];
-    orders: WbOrder[];
-    stocks: WbStock[];
-    advertising: WbAdvertising[];
+/**
+ * Stock - данные по остаткам
+ */
+export interface WbStock {
+    stock_units: number;
 }
+
+/**
+ * Advertising - данные по рекламе
+ */
+export interface WbAdvertising {
+    ad_search_spend: number;
+    ad_search_drr: number;
+    ad_media_drr: number;
+    ad_bloggers_drr: number;
+    ad_other_drr: number;
+}
+
+/**
+ * Combined SKU data - все данные по SKU за период
+ */
+export interface WbSkuData {
+    sku: WbSku;
+    sale: WbSale;
+    order: WbOrder;
+    stock: WbStock;
+    advertising: WbAdvertising;
+}
+
+/**
+ * Report period
+ */
+export interface WbPeriod {
+    from: string; // YYYY-MM-DD
+    to: string;   // YYYY-MM-DD
+}
+
+/**
+ * Full report - полный отчёт за период
+ */
+export interface WbReport {
+    period: WbPeriod;
+    data: WbSkuData[];
+}
+
+
