@@ -25,23 +25,31 @@ export interface FunnelRow {
 }
 
 const COLUMN_MAP: Record<string, keyof FunnelRow> = {
+    // Basic info
     "Артикул WB": "sku",
     "Название": "name",
     "Бренд": "brand",
 
+    // Funnel metrics - exact column names from WB export
     "Показы": "views",
-    "Клики": "clicks",
-    "В корзину": "cart",
-    "Заказы": "orders",
+    "Переходы в карточку": "clicks",
+    "Положили в корзину": "cart",
+    "Заказали, шт": "orders",
     "CTR": "ctr",
-    "CR в корзину": "cr_cart",
-    "CR в заказ": "cr_order",
+    "Конверсия в корзину, %": "cr_cart",
+    "Конверсия в заказ, %": "cr_order",
 
+    // Price & Revenue
     "Средняя цена, ₽": "avg_price",
+    "Заказали на сумму, ₽": "revenue",
     "Выручка": "revenue",
 
+    // Stock
+    "Остатки МП, шт": "stock_units",
     "Остатки": "stock_units",
+    "Остатки склад ВБ, шт": "stock_units",
 
+    // DRR (if exists)
     "DRR Поиск": "drr_search",
     "DRR Медиа": "drr_media",
     "DRR Блогеры": "drr_bloggers",
