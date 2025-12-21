@@ -1,9 +1,12 @@
 'use client';
 
 import { CategoryConfig } from '@/analytics-engine/wb/wb-config-loader';
+import { getSupabaseClient, isSupabaseConfigured } from '@/analytics-engine/supabase/supabase-client';
 
 /**
  * Supabase table: wb_category_config
+ * 
+ * SQL to create table:
  * 
  * CREATE TABLE wb_category_config (
  *   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -17,10 +20,18 @@ import { CategoryConfig } from '@/analytics-engine/wb/wb-config-loader';
  *   stock_overstock_days NUMERIC NOT NULL DEFAULT 120,
  *   updated_at TIMESTAMPTZ DEFAULT NOW()
  * );
+ * 
+ * INSERT default values:
+ * INSERT INTO wb_category_config (category, min_margin_pct, ctr_warning, cr_order_warning, price_step_pct, drr_warning, stock_critical_days, stock_overstock_days)
+ * VALUES 
+ *   ('FACE', 25, 2.5, 3.0, 3, 20, 10, 120),
+ *   ('HAIR', 22, 2.0, 2.5, 4, 18, 14, 90),
+ *   ('BODY', 20, 1.8, 2.0, 5, 15, 14, 100),
+ *   ('MAKEUP', 30, 3.0, 4.0, 2, 25, 7, 60);
  */
 
-// In-memory mock storage (will be replaced with Supabase)
-let MOCK_CONFIGS: CategoryConfig[] = [
+// Fallback mock data (used when Supabase is not configured)
+const MOCK_CONFIGS: CategoryConfig[] = [
     {
         category: 'FACE',
         min_margin_pct: 25,
@@ -63,49 +74,103 @@ let MOCK_CONFIGS: CategoryConfig[] = [
     },
 ];
 
+// In-memory cache for mock mode
+let mockConfigsCache = [...MOCK_CONFIGS];
+
 /**
- * Get all category configurations
- * TODO: Replace with Supabase query
+ * Get all category configurations from Supabase
  */
 export async function getCategoryConfigs(): Promise<CategoryConfig[]> {
-    // TODO: Supabase implementation
-    // const { data, error } = await supabase.from('wb_category_config').select('*');
-    return [...MOCK_CONFIGS];
+    // Check if Supabase is configured
+    if (!isSupabaseConfigured()) {
+        console.warn('Supabase not configured, using mock data');
+        return [...mockConfigsCache];
+    }
+
+    try {
+        const supabase = getSupabaseClient();
+        const { data, error } = await supabase
+            .from('wb_category_config')
+            .select('category, min_margin_pct, ctr_warning, cr_order_warning, price_step_pct, drr_warning, stock_critical_days, stock_overstock_days')
+            .order('category');
+
+        if (error) {
+            console.error('Supabase error:', error);
+            return [...mockConfigsCache];
+        }
+
+        return data as CategoryConfig[];
+    } catch (err) {
+        console.error('Failed to fetch configs:', err);
+        return [...mockConfigsCache];
+    }
 }
 
 /**
  * Get single category configuration
  */
 export async function getCategoryConfig(category: string): Promise<CategoryConfig | null> {
-    const configs = await getCategoryConfigs();
-    return configs.find(c => c.category === category) || null;
+    if (!isSupabaseConfigured()) {
+        return mockConfigsCache.find(c => c.category === category) || null;
+    }
+
+    try {
+        const supabase = getSupabaseClient();
+        const { data, error } = await supabase
+            .from('wb_category_config')
+            .select('category, min_margin_pct, ctr_warning, cr_order_warning, price_step_pct, drr_warning, stock_critical_days, stock_overstock_days')
+            .eq('category', category)
+            .single();
+
+        if (error) {
+            console.error('Supabase error:', error);
+            return mockConfigsCache.find(c => c.category === category) || null;
+        }
+
+        return data as CategoryConfig;
+    } catch (err) {
+        console.error('Failed to fetch config:', err);
+        return mockConfigsCache.find(c => c.category === category) || null;
+    }
 }
 
 /**
- * Update category configuration
- * TODO: Replace with Supabase update
+ * Update category configuration in Supabase
  */
 export async function updateCategoryConfig(
     category: string,
     data: Partial<CategoryConfig>
 ): Promise<CategoryConfig | null> {
-    // TODO: Supabase implementation
-    // const { data: updated, error } = await supabase
-    //   .from('wb_category_config')
-    //   .update({ ...data, updated_at: new Date().toISOString() })
-    //   .eq('category', category)
-    //   .select()
-    //   .single();
+    if (!isSupabaseConfigured()) {
+        // Update mock cache
+        const index = mockConfigsCache.findIndex(c => c.category === category);
+        if (index === -1) return null;
+        mockConfigsCache[index] = { ...mockConfigsCache[index], ...data };
+        return mockConfigsCache[index];
+    }
 
-    const index = MOCK_CONFIGS.findIndex(c => c.category === category);
-    if (index === -1) return null;
+    try {
+        const supabase = getSupabaseClient();
+        const { data: updated, error } = await supabase
+            .from('wb_category_config')
+            .update({
+                ...data,
+                updated_at: new Date().toISOString(),
+            })
+            .eq('category', category)
+            .select('category, min_margin_pct, ctr_warning, cr_order_warning, price_step_pct, drr_warning, stock_critical_days, stock_overstock_days')
+            .single();
 
-    MOCK_CONFIGS[index] = {
-        ...MOCK_CONFIGS[index],
-        ...data,
-    };
+        if (error) {
+            console.error('Supabase update error:', error);
+            return null;
+        }
 
-    return MOCK_CONFIGS[index];
+        return updated as CategoryConfig;
+    } catch (err) {
+        console.error('Failed to update config:', err);
+        return null;
+    }
 }
 
 /**
