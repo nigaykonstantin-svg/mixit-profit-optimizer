@@ -47,11 +47,9 @@ export default function FunnelPage() {
     const fetchData = async () => {
         setLoading(true);
         try {
-            const response = await fetch('/api/funnel');
-            const result = await response.json();
-            if (result.success && result.rows) {
-                setData(result.rows);
-            }
+            const res = await fetch('/api/funnel');
+            const { rows } = await res.json();
+            setData(rows || []);
         } catch (error) {
             console.error('Failed to fetch funnel data:', error);
         } finally {
