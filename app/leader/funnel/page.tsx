@@ -33,7 +33,7 @@ const MOCK_FUNNEL_DATA: AnalyzedFunnelRow[] = [
     { sku: '777888999', revenue: 75000, views: 6000, orders: 30, ctr: 3.5, cr_order: 0.5, revenue_per_view: 12.5, cpc: 250, conversion_quality: 'Low stock', stock: 5, price: 2500, total_drr: 18 },
 ];
 
-type QualityFilter = 'all' | 'Normal' | 'Overpriced' | 'Low stock';
+type QualityFilter = 'all' | 'normal' | 'low_stock' | 'overpriced' | 'high_drr';
 type SortField = 'sku' | 'revenue' | 'views' | 'orders' | 'ctr' | 'cr_order' | 'total_drr' | 'stock';
 type SortDir = 'asc' | 'desc';
 
@@ -65,16 +65,20 @@ export default function FunnelPage() {
     const processedData = useMemo(() => {
         let result = [...data];
 
-        // Filter by quality
-        if (filter !== 'all') {
-            result = result.filter(row => row.conversion_quality === filter);
-        }
-
         // Search by SKU
         if (search.trim()) {
             const searchLower = search.toLowerCase();
             result = result.filter(row => row.sku.toLowerCase().includes(searchLower));
         }
+
+        // Filter by threshold
+        result = result.filter(row => {
+            if (filter === 'low_stock') return row.stock < 20;
+            if (filter === 'overpriced') return row.cr_order < 0.5;
+            if (filter === 'high_drr') return row.total_drr > 20;
+            if (filter === 'normal') return row.conversion_quality === 'Normal';
+            return true; // 'all'
+        });
 
         // Sort
         result.sort((a, b) => {
@@ -221,17 +225,23 @@ export default function FunnelPage() {
                 <div className="flex flex-col md:flex-row gap-4 items-start md:items-center justify-between">
                     <div className="flex items-center gap-3">
                         <Filter size={18} className="text-gray-400" />
-                        <div className="flex gap-2">
-                            {(['all', 'Normal', 'Overpriced', 'Low stock'] as QualityFilter[]).map((f) => (
+                        <div className="flex gap-2 flex-wrap">
+                            {([
+                                { id: 'all', label: 'Все' },
+                                { id: 'normal', label: 'Норма' },
+                                { id: 'low_stock', label: 'Мало стока' },
+                                { id: 'overpriced', label: 'Низкий CR' },
+                                { id: 'high_drr', label: 'Высокий ДРР' },
+                            ] as { id: QualityFilter; label: string }[]).map((f) => (
                                 <button
-                                    key={f}
-                                    onClick={() => setFilter(f)}
-                                    className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${filter === f
+                                    key={f.id}
+                                    onClick={() => setFilter(f.id)}
+                                    className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${filter === f.id
                                         ? 'bg-gray-900 text-white'
                                         : 'bg-white text-gray-600 hover:bg-gray-50 border border-gray-200'
                                         }`}
                                 >
-                                    {f === 'all' ? 'Все' : f === 'Normal' ? 'Норма' : f === 'Overpriced' ? 'Переоценены' : 'Мало стока'}
+                                    {f.label}
                                 </button>
                             ))}
                         </div>
