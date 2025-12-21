@@ -1,12 +1,5 @@
-// Analytics module exports
-export * from './analytics-model';
-export * from './analytics-api';
-export {
-    PeriodSelector,
-    SalesMetricsCard,
-    ConversionFunnelCard,
-    TrafficSourcesCard,
-    RevenueTrendCard,
-    TopSkusCard,
-    AnalyticsDashboard,
-} from './analytics-ui';
+// Analytics module UI exports
+export { AnalyticsDashboard } from './AnalyticsDashboard';
+export { CategorySignals } from './CategorySignals';
+export { SkuSignals } from './SkuSignals';
+export { AiInsightsPanel } from './AiInsightsPanel';

@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { getCurrentUser, logout, AuthUser } from '@/modules/auth';
 import { getTasks, TaskCard, QuickTask, Task, TASK_STATUSES, TaskStatus } from '@/modules/tasks';
 import { USERS, UserId, getExecutors, USER_ROLES } from '@/modules/users';
-import { LogOut, Filter, Clock, Play, CheckCircle2, LayoutGrid, BarChart3 } from 'lucide-react';
+import { LogOut, Filter, Clock, Play, CheckCircle2, LayoutGrid } from 'lucide-react';
 
 const STATUS_TABS: { id: TaskStatus | 'all'; label: string; icon: typeof Clock }[] = [
     { id: 'all', label: 'Все', icon: Filter },
@@ -74,13 +74,6 @@ export default function LeaderDashboard() {
                         </div>
                     </div>
                     <div className="flex items-center gap-2">
-                        <button
-                            onClick={() => router.push('/analytics')}
-                            className="px-4 py-2 bg-green-100 text-green-700 hover:bg-green-200 rounded-xl text-sm font-medium flex items-center gap-2 transition-all"
-                        >
-                            <BarChart3 size={18} />
-                            Аналитика
-                        </button>
                         <button
                             onClick={() => router.push('/categories')}
                             className="px-4 py-2 bg-purple-100 text-purple-700 hover:bg-purple-200 rounded-xl text-sm font-medium flex items-center gap-2 transition-all"
