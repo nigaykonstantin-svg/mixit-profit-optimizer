@@ -24,86 +24,90 @@ export interface FunnelRow {
     drr_other: number;
 }
 
-// Flexible column map with lowercase normalized keys
-const COLUMN_MAP: Record<string, keyof FunnelRow> = {
-    // SKU
-    'артикул wb': 'sku',
-    'артикул': 'sku',
-    'sku': 'sku',
-
-    // Name & Brand
-    'название': 'name',
-    'бренд': 'brand',
-
-    // Views
-    'просмотры': 'views',
-    'показы': 'views',
-    'views': 'views',
-
-    // Clicks
-    'клики': 'clicks',
-    'переходы': 'clicks',
-    'clicks': 'clicks',
-
-    // Cart
-    'корзина': 'cart',
-
-    // Orders
-    'заказы': 'orders',
-    'заказали': 'orders',
-
-    // CTR
-    'ctr': 'ctr',
-
-    // CR
-    'cr корзина': 'cr_cart',
-    'конверсия в корзину': 'cr_cart',
-    'cr заказов': 'cr_order',
-    'конверсия в заказ': 'cr_order',
-
-    // Price
-    'средняя цена': 'avg_price',
-    'цена': 'avg_price',
-
-    // Revenue
-    'выручка': 'revenue',
-    'revenue': 'revenue',
-
-    // Stock
-    'остатки': 'stock_units',
-    'stock': 'stock_units',
-
-    // DRR
-    'drr поиск': 'drr_search',
-    'drr медиа': 'drr_media',
-    'drr блогеры': 'drr_bloggers',
-    'drr остальное': 'drr_other',
-};
-
 /**
- * Normalize header for comparison
+ * Normalize header for comparison - removes spaces, special chars, converts to lowercase
  */
 function normalizeHeader(h: string): string {
     return h
-        .trim()
         .toLowerCase()
-        .replace(/[\s_/()-]+/g, ' ')
-        .replace(/[₽%,шт]+/g, '')
+        .replace(/\s+/g, "")
+        .replace(/[^\p{L}\p{N}]/gu, "")
         .trim();
 }
 
+// Column mapping with normalized keys (no spaces, lowercase)
+const HEADER_MAP: Record<string, keyof FunnelRow> = {
+    // SKU
+    "артикулwb": "sku",
+    "артикулпродавца": "sku",
+    "артикул": "sku",
+
+    // Name & Brand
+    "название": "name",
+    "бренд": "brand",
+
+    // Views
+    "показы": "views",
+    "просмотры": "views",
+
+    // Clicks
+    "клики": "clicks",
+    "переходы": "clicks",
+    "переходывкарточку": "clicks",
+
+    // Cart
+    "вкорзину": "cart",
+    "положиливкорзину": "cart",
+    "корзина": "cart",
+
+    // Orders - different variations
+    "заказы": "orders",
+    "заказали": "orders",
+    "заказалишт": "orders",
+    "заказовшт": "orders",
+    "заказов": "orders",
+
+    // CTR
+    "ctr": "ctr",
+
+    // CR
+    "crвкорзину": "cr_cart",
+    "конверсиявкорзину": "cr_cart",
+    "crвзаказ": "cr_order",
+    "конверсиявзаказ": "cr_order",
+
+    // Price
+    "средняяцена": "avg_price",
+    "средняяцена₽": "avg_price",
+
+    // Revenue
+    "выручка": "revenue",
+    "заказалинасумму": "revenue",
+    "заказалинасумму₽": "revenue",
+
+    // Stock - different variations
+    "остатки": "stock_units",
+    "остаткимп": "stock_units",
+    "остаткимпшт": "stock_units",
+    "остаткискладвб": "stock_units",
+    "остаткискладвбшт": "stock_units",
+    "остаткисклад": "stock_units",
+
+    // DRR - different variations
+    "drrпоиск": "drr_search",
+    "drrпоиска": "drr_search",
+    "drrмедиа": "drr_media",
+    "drrблогеры": "drr_bloggers",
+    "drростальное": "drr_other",
+    "drrдругое": "drr_other",
+};
+
 /**
- * Find column mapping by checking if normalized header includes any key
+ * Find column mapping by checking if normalized header matches any key
  */
 export function findColumn(header: string): keyof FunnelRow | null {
     const normalized = normalizeHeader(header);
-
-    for (const key in COLUMN_MAP) {
-        if (normalized.includes(key)) {
-            return COLUMN_MAP[key];
-        }
-    }
-    return null;
+    return HEADER_MAP[normalized] || null;
 }
 
 export function parseFunnelSheet(fileBuffer: Buffer): FunnelRow[] {
@@ -111,19 +115,41 @@ export function parseFunnelSheet(fileBuffer: Buffer): FunnelRow[] {
 
     console.log('Available sheets:', workbook.SheetNames);
 
-    // Try to find "Товары" sheet or use 4th sheet
-    const sheetName = workbook.SheetNames.find(name => name.includes('Товары')) || workbook.SheetNames[3];
-    console.log('Using sheet:', sheetName);
+    // WB Funnel export: 4th sheet (index 3) contains "Товары"
+    const sheetIndex = Math.min(3, workbook.SheetNames.length - 1);
+    const sheetName = workbook.SheetNames[sheetIndex];
+
+    console.log(`Using sheet [${sheetIndex}]: ${sheetName}`);
 
     const sheet = workbook.Sheets[sheetName];
-    const json = xlsx.utils.sheet_to_json<Record<string, unknown>>(sheet);
+
+    // First get all rows without headers to find header row
+    const allRows = xlsx.utils.sheet_to_json<unknown[]>(sheet, { header: 1 });
+
+    // Find the row with actual headers (contains "Артикул")
+    let headerRowIndex = 0;
+    for (let i = 0; i < Math.min(10, allRows.length); i++) {
+        const row = allRows[i] as unknown[];
+        if (row && row.some((cell) => String(cell).includes("Артикул"))) {
+            headerRowIndex = i;
+            break;
+        }
+    }
+
+    console.log("Header row index:", headerRowIndex);
+
+    // Re-parse with correct range
+    const json = xlsx.utils.sheet_to_json<Record<string, unknown>>(sheet, {
+        defval: null,
+        range: headerRowIndex
+    });
 
     console.log('Rows in sheet:', json.length);
     if (json.length > 0) {
-        console.log('First row keys:', Object.keys(json[0]));
-        // Log which columns we can match
         const headers = Object.keys(json[0]);
         console.log('Parsed headers:', headers);
+
+        // Log matched columns
         const matchedColumns: Record<string, string> = {};
         for (const h of headers) {
             const mapped = findColumn(h);
