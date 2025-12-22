@@ -116,7 +116,7 @@ serve(async (req) => {
             });
 
             console.log("Sheet count:", sheetNames.length);
-            console.log("First row keys:", jsonRows[0] ? Object.keys(jsonRows[0]).slice(0, 5) : "empty");
+            console.log("All headers:", jsonRows[0] ? Object.keys(jsonRows[0]) : "empty");
 
         } else if (filename.endsWith(".csv")) {
             const decoder = new TextDecoder("utf-8");
@@ -177,10 +177,8 @@ serve(async (req) => {
             "заказалинасумму": "revenue",
             "заказалинасумму₽": "revenue",
 
-            // Stock - different variations
+            // Stock - use склад ВБ only (МП is usually 0 and would overwrite)
             "остатки": "stock_units",
-            "остаткимп": "stock_units",
-            "остаткимпшт": "stock_units",
             "остаткискладвб": "stock_units",
             "остаткискладвбшт": "stock_units",
             "остаткисклад": "stock_units",
@@ -196,6 +194,20 @@ serve(async (req) => {
             "drростальное": "drr_other",
             "drrдругое": "drr_other",
         };
+
+        // DEBUG: Log normalized headers and their mappings
+        if (jsonRows.length > 0) {
+            const row = jsonRows[0];
+            const debugMapping: Record<string, { normalized: string; mapped: string | null }> = {};
+            for (const col of Object.keys(row)) {
+                const normalized = normalize(col);
+                const mapped = headerMap[normalized] || null;
+                if (col.toLowerCase().includes("остатки")) {
+                    debugMapping[col] = { normalized, mapped };
+                }
+            }
+            console.log("Stock column debug:", JSON.stringify(debugMapping));
+        }
 
         // ---- Преобразуем строки ----
         const finalData = jsonRows
@@ -245,12 +257,26 @@ serve(async (req) => {
             }
             insertedCount += slice.length;
         }
+        // Create stock debug info
+        let stockDebug: Record<string, { normalized: string; mapped: string | null }> = {};
+        if (jsonRows.length > 0) {
+            for (const col of Object.keys(jsonRows[0])) {
+                if (col.toLowerCase().includes("остатки")) {
+                    stockDebug[col] = {
+                        normalized: normalize(col),
+                        mapped: headerMap[normalize(col)] || null
+                    };
+                }
+            }
+        }
 
         return new Response(
             JSON.stringify({
                 success: true,
                 inserted: insertedCount,
-                parsed: jsonRows.length
+                parsed: jsonRows.length,
+                stockDebug: stockDebug,
+                sampleRow: finalData[0] || null
             }),
             { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );

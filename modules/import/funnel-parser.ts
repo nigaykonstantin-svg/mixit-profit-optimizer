@@ -85,10 +85,8 @@ const HEADER_MAP: Record<string, keyof FunnelRow> = {
     "заказалинасумму": "revenue",
     "заказалинасумму₽": "revenue",
 
-    // Stock - different variations
+    // Stock - use склад ВБ only (МП is usually 0 and would overwrite)
     "остатки": "stock_units",
-    "остаткимп": "stock_units",
-    "остаткимпшт": "stock_units",
     "остаткискладвб": "stock_units",
     "остаткискладвбшт": "stock_units",
     "остаткисклад": "stock_units",
