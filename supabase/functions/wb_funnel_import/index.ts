@@ -184,6 +184,9 @@ serve(async (req) => {
             "остаткискладвб": "stock_units",
             "остаткискладвбшт": "stock_units",
             "остаткисклад": "stock_units",
+            "остаткискладwb": "stock_units",
+            "остаткискладwbшт": "stock_units",
+            "остаткишт": "stock_units",
 
             // DRR - different variations
             "drrпоиск": "drr_search",
