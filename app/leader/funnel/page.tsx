@@ -327,13 +327,13 @@ export default function FunnelPage() {
                                             <span className={row.cr_order < 1 ? 'text-orange-600' : 'text-gray-600'}>{row.cr_order.toFixed(2)}%</span>
                                         </td>
                                         <td className="py-3 px-2 text-right">
-                                            <span className={row.drr_search > 20 ? 'text-red-600 font-medium' : 'text-gray-600'}>{row.drr_search.toFixed(1)}%</span>
+                                            <span className={row.drr_search > 0.2 ? 'text-red-600 font-medium' : 'text-gray-600'}>{(row.drr_search * 100).toFixed(1)}%</span>
                                         </td>
                                         <td className="py-3 px-2 text-right">
-                                            <span className={row.drr_media > 20 ? 'text-red-600 font-medium' : 'text-gray-600'}>{row.drr_media.toFixed(1)}%</span>
+                                            <span className={row.drr_media > 0.2 ? 'text-red-600 font-medium' : 'text-gray-600'}>{(row.drr_media * 100).toFixed(1)}%</span>
                                         </td>
                                         <td className="py-3 px-2 text-right">
-                                            <span className={row.drr_bloggers > 20 ? 'text-red-600 font-medium' : 'text-gray-600'}>{row.drr_bloggers.toFixed(1)}%</span>
+                                            <span className={row.drr_bloggers > 0.2 ? 'text-red-600 font-medium' : 'text-gray-600'}>{(row.drr_bloggers * 100).toFixed(1)}%</span>
                                         </td>
                                         <td className="py-3 px-2 text-right">
                                             <span className={row.stock < 20 ? 'text-red-600 font-medium' : 'text-gray-600'}>{row.stock}</span>
