@@ -46,19 +46,22 @@ const HEADER_MAP: Record<string, keyof FunnelRow> = {
     "название": "name",
     "бренд": "brand",
 
-    // Views
+    // Views / Показы
     "показы": "views",
     "просмотры": "views",
+    "показов": "views",
 
-    // Clicks
+    // Clicks / Клики
     "клики": "clicks",
     "переходы": "clicks",
     "переходывкарточку": "clicks",
+    "кликов": "clicks",
 
-    // Cart
+    // Cart / Корзина
     "вкорзину": "cart",
     "положиливкорзину": "cart",
     "корзина": "cart",
+    "суммаклз": "cart",  // Сумма Клз from new format
 
     // Orders - different variations
     "заказы": "orders",
@@ -66,24 +69,33 @@ const HEADER_MAP: Record<string, keyof FunnelRow> = {
     "заказалишт": "orders",
     "заказовшт": "orders",
     "заказов": "orders",
+    "суммазак": "orders",  // Сумма Зак from new format
+    "суммазакcr0": "orders",  // Сумма Зак CR 0
 
     // CTR
     "ctr": "ctr",
 
-    // CR
+    // CR - Conversion Rates
     "crвкорзину": "cr_cart",
     "конверсиявкорзину": "cr_cart",
+    "crвкорзи": "cr_cart",  // CR в корзи (shortened)
+    "crкорзина": "cr_cart",
     "crвзаказ": "cr_order",
     "конверсиявзаказ": "cr_order",
+    "crзаказ": "cr_order",
+    "cr0": "cr_order",  // CR 0 from header
 
     // Price
     "средняяцена": "avg_price",
     "средняяцена₽": "avg_price",
+    "ценаруб": "avg_price",  // Цена, руб.
+    "цена": "avg_price",
 
     // Revenue
     "выручка": "revenue",
     "заказалинасумму": "revenue",
     "заказалинасумму₽": "revenue",
+    "выручкак": "revenue",
 
     // Stock - use склад ВБ only (МП is usually 0 and would overwrite)
     "остатки": "stock_units",
@@ -93,6 +105,7 @@ const HEADER_MAP: Record<string, keyof FunnelRow> = {
     "остаткискладwb": "stock_units",
     "остаткискладwbшт": "stock_units",
     "остаткишт": "stock_units",
+    "сток": "stock_units",
 
     // DRR - different variations
     "drrпоиск": "drr_search",
@@ -101,6 +114,7 @@ const HEADER_MAP: Record<string, keyof FunnelRow> = {
     "drrблогеры": "drr_bloggers",
     "drростальное": "drr_other",
     "drrдругое": "drr_other",
+    "drr": "drr_search",
 };
 
 /**

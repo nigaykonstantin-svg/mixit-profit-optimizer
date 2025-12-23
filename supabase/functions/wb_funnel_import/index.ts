@@ -142,20 +142,29 @@ serve(async (req) => {
 
         // ---- Маппинг ключевых колонок ----
         const headerMap: Record<string, string> = {
+            // SKU
             "артикулwb": "sku",
             "артикулпродавца": "sku",
             "артикул": "sku",
             "название": "name",
             "бренд": "brand",
 
+            // Views
             "показы": "views",
             "просмотры": "views",
+            "показов": "views",
+
+            // Clicks
             "клики": "clicks",
             "переходы": "clicks",
             "переходывкарточку": "clicks",
+            "кликов": "clicks",
+
+            // Cart
             "вкорзину": "cart",
             "положиливкорзину": "cart",
             "корзина": "cart",
+            "суммаклз": "cart",  // Сумма Клз from new format
 
             // Orders - different variations
             "заказы": "orders",
@@ -163,20 +172,32 @@ serve(async (req) => {
             "заказалишт": "orders",
             "заказовшт": "orders",
             "заказов": "orders",
+            "суммазак": "orders",  // Сумма Зак from new format
 
+            // CTR & CR
             "ctr": "ctr",
             "crвкорзину": "cr_cart",
             "конверсиявкорзину": "cr_cart",
+            "crвкорзи": "cr_cart",
+            "crкорзина": "cr_cart",
             "crвзаказ": "cr_order",
             "конверсиявзаказ": "cr_order",
+            "crзаказ": "cr_order",
+            "cr0": "cr_order",
 
+            // Price
             "средняяцена": "avg_price",
             "средняяцена₽": "avg_price",
+            "ценаруб": "avg_price",
+            "цена": "avg_price",
+
+            // Revenue
             "выручка": "revenue",
             "заказалинасумму": "revenue",
             "заказалинасумму₽": "revenue",
+            "выручкак": "revenue",
 
-            // Stock - use склад ВБ only (МП is usually 0 and would overwrite)
+            // Stock
             "остатки": "stock_units",
             "остаткискладвб": "stock_units",
             "остаткискладвбшт": "stock_units",
@@ -184,6 +205,7 @@ serve(async (req) => {
             "остаткискладwb": "stock_units",
             "остаткискладwbшт": "stock_units",
             "остаткишт": "stock_units",
+            "сток": "stock_units",
 
             // DRR - different variations
             "drrпоиск": "drr_search",
@@ -192,6 +214,7 @@ serve(async (req) => {
             "drrблогеры": "drr_bloggers",
             "drростальное": "drr_other",
             "drrдругое": "drr_other",
+            "drr": "drr_search",
         };
 
         // DEBUG: Log normalized headers and their mappings
