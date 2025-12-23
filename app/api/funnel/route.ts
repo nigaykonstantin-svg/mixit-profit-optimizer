@@ -22,8 +22,6 @@ export async function GET() {
     // Transform to FunnelRow format
     const funnelRows: FunnelRow[] = (data || []).map(row => ({
         sku: row.sku || '',
-        name: row.name || '',
-        brand: row.brand || '',
         views: row.views || 0,
         clicks: row.clicks || 0,
         cart: row.cart || 0,
@@ -32,6 +30,9 @@ export async function GET() {
         cr_cart: row.cr_cart || 0,
         cr_order: row.cr_order || 0,
         avg_price: row.avg_price || 0,
+        client_price: row.client_price || 0,
+        competitor_price_min: row.competitor_price_min || 0,
+        competitor_price_avg: row.competitor_price_avg || 0,
         revenue: row.revenue || 0,
         stock_units: row.stock_units || 0,
         drr_search: row.drr_search || 0,

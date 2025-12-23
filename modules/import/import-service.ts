@@ -241,8 +241,6 @@ export async function importExcelFile(
 function mapExcelRowToDatabaseRow(row: FunnelRow) {
     return {
         sku: row.sku || '',
-        name: row.name || '',
-        brand: row.brand || '',
         views: row.views || 0,
         clicks: row.clicks || 0,
         cart: row.cart || 0,
