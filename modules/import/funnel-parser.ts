@@ -19,7 +19,7 @@ export interface FunnelRow {
     avg_price: number;        // Цена, руб.
     client_price: number;     // Цена покупателя
 
-    competitor_price_min: number; // 👈 КОНКУРЕНТЫ
+    competitor_price_min: number;
     competitor_price_avg: number;
 
     revenue: number;
@@ -43,7 +43,7 @@ function normalize(h: string): string {
 }
 
 /* ============================
-   COLUMN MAP
+   COLUMN MAP - EXACT from Excel
 ============================ */
 
 const HEADER_MAP: Record<string, keyof FunnelRow> = {
@@ -67,7 +67,7 @@ const HEADER_MAP: Record<string, keyof FunnelRow> = {
     "ценаруб": "avg_price",
     "ценапокупателя": "client_price",
 
-    // 👇 КОНКУРЕНТЫ
+    // COMPETITORS
     "ценаконкурентовмин": "competitor_price_min",
     "минценаконкурента": "competitor_price_min",
     "средняяценаконкурентов": "competitor_price_avg",
@@ -75,7 +75,7 @@ const HEADER_MAP: Record<string, keyof FunnelRow> = {
     // REVENUE
     "суммавыручкарубсндс": "revenue",
 
-    // STOCK (ВАЖНО!)
+    // STOCK
     "сумматекущийостатокшт": "stock_units",
 
     // DRR
@@ -93,9 +93,42 @@ export function parseFunnelSheet(fileBuffer: Buffer): FunnelRow[] {
     const workbook = xlsx.read(fileBuffer, { cellDates: false });
     const sheet = workbook.Sheets[workbook.SheetNames[0]];
 
+    console.log("Sheet name:", workbook.SheetNames[0]);
+
+    // First get all rows to find header row
+    const allRows = xlsx.utils.sheet_to_json<unknown[]>(sheet, { header: 1 });
+
+    // Find the row with actual headers (contains "Артикул")
+    let headerRowIndex = 0;
+    for (let i = 0; i < Math.min(10, allRows.length); i++) {
+        const row = allRows[i] as unknown[];
+        if (row && row.some((cell) => String(cell).includes("Артикул"))) {
+            headerRowIndex = i;
+            console.log("Found header row at index:", i);
+            console.log("Headers:", row);
+            break;
+        }
+    }
+
+    // Parse with correct range starting from header row
     const raw = xlsx.utils.sheet_to_json<Record<string, unknown>>(sheet, {
-        defval: null
+        defval: null,
+        range: headerRowIndex
     });
+
+    console.log("Parsed rows count:", raw.length);
+    if (raw.length > 0) {
+        console.log("Column headers:", Object.keys(raw[0]));
+
+        // Debug: print matches
+        for (const col of Object.keys(raw[0])) {
+            const normalized = normalize(col);
+            const mapped = HEADER_MAP[normalized];
+            if (mapped) {
+                console.log(`  "${col}" -> normalized: "${normalized}" -> ${mapped}`);
+            }
+        }
+    }
 
     return raw
         .map(row => {
