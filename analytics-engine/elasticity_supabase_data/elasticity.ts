@@ -37,7 +37,7 @@ export function aggregateByPriceBucket(
 
     for (const row of data) {
         const pctChange = basePrice > 0 ? (row.price - basePrice) / basePrice : 0;
-        const bucket = findBucket(pctChange, CONFIG.priceBuckets);
+        const bucket = findBucket(pctChange, CONFIG.scenarioGrid.priceDeltas);
 
         if (!buckets.has(bucket)) {
             buckets.set(bucket, []);
@@ -47,7 +47,7 @@ export function aggregateByPriceBucket(
 
     const stats: PriceBucketStats[] = [];
     for (const [bucket, rows] of buckets) {
-        if (rows.length < CONFIG.minDaysPriceConstant) continue;
+        if (rows.length < 2) continue; // min days
 
         stats.push({
             priceBucket: bucket,
@@ -90,7 +90,7 @@ export function calculateSkuElasticity(
     const sku = data[0].sku;
     const totalOrders = data.reduce((s, r) => s + r.orders, 0);
 
-    if (totalOrders < CONFIG.minOrders) {
+    if (totalOrders < CONFIG.filters.minTotalOrdersPerSku) {
         return {
             sku,
             priceElasticity: null,
@@ -103,7 +103,8 @@ export function calculateSkuElasticity(
     const priceMode = getMode(data.map(r => r.price));
     const bucketStats = aggregateByPriceBucket(data, priceMode);
 
-    if (bucketStats.length < 2) {
+    // Check min unique prices
+    if (bucketStats.length < CONFIG.filters.minUniquePrices) {
         return {
             sku,
             priceElasticity: null,
