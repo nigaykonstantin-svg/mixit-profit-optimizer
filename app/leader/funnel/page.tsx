@@ -303,9 +303,9 @@ export default function FunnelPage() {
                                     <th className="text-right py-3 px-2 font-medium text-gray-600 cursor-pointer hover:text-gray-900" onClick={() => handleSort('cr_order')}>
                                         <div className="flex items-center justify-end gap-1">CR {getSortIcon('cr_order')}</div>
                                     </th>
-                                    <th className="text-right py-3 px-2 font-medium text-gray-600 cursor-pointer hover:text-gray-900" onClick={() => handleSort('total_drr')}>
-                                        <div className="flex items-center justify-end gap-1">ДРР {getSortIcon('total_drr')}</div>
-                                    </th>
+                                    <th className="text-right py-3 px-2 font-medium text-gray-600">DRR Поиск</th>
+                                    <th className="text-right py-3 px-2 font-medium text-gray-600">DRR Медиа</th>
+                                    <th className="text-right py-3 px-2 font-medium text-gray-600">DRR Блогеры</th>
                                     <th className="text-right py-3 px-2 font-medium text-gray-600 cursor-pointer hover:text-gray-900" onClick={() => handleSort('stock')}>
                                         <div className="flex items-center justify-end gap-1">Сток {getSortIcon('stock')}</div>
                                     </th>
@@ -327,15 +327,21 @@ export default function FunnelPage() {
                                             <span className={row.cr_order < 1 ? 'text-orange-600' : 'text-gray-600'}>{row.cr_order.toFixed(2)}%</span>
                                         </td>
                                         <td className="py-3 px-2 text-right">
-                                            <span className={row.total_drr > 20 ? 'text-red-600 font-medium' : 'text-gray-600'}>{row.total_drr.toFixed(1)}%</span>
+                                            <span className={row.drr_search > 20 ? 'text-red-600 font-medium' : 'text-gray-600'}>{row.drr_search.toFixed(1)}%</span>
+                                        </td>
+                                        <td className="py-3 px-2 text-right">
+                                            <span className={row.drr_media > 20 ? 'text-red-600 font-medium' : 'text-gray-600'}>{row.drr_media.toFixed(1)}%</span>
+                                        </td>
+                                        <td className="py-3 px-2 text-right">
+                                            <span className={row.drr_bloggers > 20 ? 'text-red-600 font-medium' : 'text-gray-600'}>{row.drr_bloggers.toFixed(1)}%</span>
                                         </td>
                                         <td className="py-3 px-2 text-right">
                                             <span className={row.stock < 20 ? 'text-red-600 font-medium' : 'text-gray-600'}>{row.stock}</span>
                                         </td>
                                         <td className="py-3 px-2 text-center">
                                             <span className={`px-2 py-1 rounded-full text-xs font-medium ${row.price_action === 'UP' ? 'bg-green-100 text-green-700' :
-                                                    row.price_action === 'DOWN' ? 'bg-red-100 text-red-700' :
-                                                        'bg-gray-100 text-gray-700'
+                                                row.price_action === 'DOWN' ? 'bg-red-100 text-red-700' :
+                                                    'bg-gray-100 text-gray-700'
                                                 }`}>
                                                 {row.price_action === 'UP' ? '↑' : row.price_action === 'DOWN' ? '↓' : '—'} {row.price_step_pct ? `${row.price_step_pct}%` : ''}
                                             </span>

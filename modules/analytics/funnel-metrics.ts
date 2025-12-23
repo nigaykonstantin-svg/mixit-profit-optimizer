@@ -307,6 +307,11 @@ export interface AnalyzedFunnelRow {
     conversion_quality: 'Overpriced' | 'Low stock' | 'Normal';
     stock: number;
     price: number;
+
+    // DRR breakdown
+    drr_search: number;
+    drr_media: number;
+    drr_bloggers: number;
     total_drr: number;
 
     // Price Engine V1
@@ -369,6 +374,11 @@ export function analyzeFunnel(data: FunnelRow[]): AnalyzedFunnelRow[] {
 
             stock: row.stock_units,
             price: row.avg_price,
+
+            // DRR breakdown
+            drr_search: row.drr_search || 0,
+            drr_media: row.drr_media || 0,
+            drr_bloggers: row.drr_bloggers || 0,
             total_drr,
 
             // Price recommendations
