@@ -3,13 +3,48 @@
 // =========================================
 
 import { FunnelRow } from '@/modules/import/funnel-parser';
-import { PriceAction, PricingDecision, AdsAction } from './types';
-import { checkGuards } from './guards';
-import { detectMode } from './mode-engine';
+import { PriceAction, PricingDecision, AdsAction, SkuMode, BlockReason } from './types';
 
-/**
- * Calculate price decision for a SKU
- */
+// =========================================
+// GUARDS - Safety checks
+// =========================================
+
+interface GuardResult {
+    blocked: boolean;
+    reason?: BlockReason;
+}
+
+function checkGuards(row: FunnelRow): GuardResult {
+    if (row.clicks < 30 || row.orders < 10) {
+        return { blocked: true, reason: 'INSUFFICIENT_DATA' };
+    }
+
+    if (row.stock_units < 10) {
+        return { blocked: true, reason: 'LOW_STOCK_GUARD' };
+    }
+
+    return { blocked: false };
+}
+
+// =========================================
+// MODE ENGINE - Detect SKU mode
+// =========================================
+
+function detectMode(row: FunnelRow): SkuMode {
+    if (row.revenue <= 0) return 'STOP';
+
+    const stock_cover_days = row.stock_units / Math.max(row.orders, 1);
+
+    if (stock_cover_days >= 120) return 'CLEAR';
+    if (row.revenue > 0 && stock_cover_days >= 15) return 'COW';
+
+    return 'GROWTH';
+}
+
+// =========================================
+// PRICE DECISION
+// =========================================
+
 export function priceDecision(row: FunnelRow): {
     action: PriceAction;
     step: number;
@@ -34,9 +69,10 @@ export function priceDecision(row: FunnelRow): {
     return { action: 'HOLD', step: 0 };
 }
 
-/**
- * Calculate total DRR
- */
+// =========================================
+// DRR & ADS DECISION
+// =========================================
+
 export function calculateTotalDRR(row: FunnelRow): number {
     return (row.drr_search || 0) +
         (row.drr_media || 0) +
@@ -44,9 +80,6 @@ export function calculateTotalDRR(row: FunnelRow): number {
         (row.drr_other || 0);
 }
 
-/**
- * Get ads action based on DRR
- */
 export function adsDecision(row: FunnelRow): AdsAction {
     const totalDRR = calculateTotalDRR(row);
 
@@ -57,9 +90,10 @@ export function adsDecision(row: FunnelRow): AdsAction {
     return 'HOLD';
 }
 
-/**
- * Generate full pricing decision for a SKU
- */
+// =========================================
+// FULL DECISION FOR SKU
+// =========================================
+
 export function getDecisionForSku(row: FunnelRow): PricingDecision {
     // Check guards first
     const guard = checkGuards(row);
@@ -104,24 +138,22 @@ export function getDecisionForSku(row: FunnelRow): PricingDecision {
         action: price.action,
         price_step_pct: price.step,
         ads_action: ads,
-        expected_profit_delta: 0, // TODO: calculate
+        expected_profit_delta: 0,
         confidence_score: 0.8,
         explanation: explanations.join('. '),
     };
 }
 
-/**
- * Analyze all SKUs
- */
+// =========================================
+// BATCH ANALYSIS
+// =========================================
+
 export function analyzeAllSkus(rows: FunnelRow[]): PricingDecision[] {
     return rows
         .filter(row => row.sku)
         .map(getDecisionForSku);
 }
 
-/**
- * Get actionable SKUs (not HOLD)
- */
 export function getActionableSkus(rows: FunnelRow[]): PricingDecision[] {
     return analyzeAllSkus(rows)
         .filter(d => d.action !== 'HOLD' || d.ads_action !== 'HOLD');
