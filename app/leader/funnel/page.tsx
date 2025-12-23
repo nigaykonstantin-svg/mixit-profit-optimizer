@@ -20,7 +20,12 @@ import {
     ArrowUpDown,
     ArrowUp,
     ArrowDown,
-    Loader2
+    Loader2,
+    CheckSquare,
+    Square,
+    ListTodo,
+    X,
+    Download
 } from 'lucide-react';
 import { AnalyzedFunnelRow } from '@/modules/analytics/funnel-metrics';
 
@@ -42,6 +47,12 @@ export default function FunnelPage() {
     const [search, setSearch] = useState('');
     const [filter, setFilter] = useState<QualityFilter>('all');
     const [sort, setSort] = useState<{ field: SortField; dir: SortDir }>({ field: 'revenue', dir: 'desc' });
+
+    // Selection state
+    const [selectedSkus, setSelectedSkus] = useState<Set<string>>(new Set());
+    const [showTaskModal, setShowTaskModal] = useState(false);
+    const [taskAssignee, setTaskAssignee] = useState('');
+    const [taskNote, setTaskNote] = useState('');
 
     // Fetch data from API
     const fetchData = async () => {
@@ -111,6 +122,56 @@ export default function FunnelPage() {
             field,
             dir: prev.field === field && prev.dir === 'desc' ? 'asc' : 'desc',
         }));
+    };
+
+    // Selection helpers
+    const toggleSelectAll = () => {
+        if (selectedSkus.size === paginatedData.length) {
+            setSelectedSkus(new Set());
+        } else {
+            setSelectedSkus(new Set(paginatedData.map(r => r.sku)));
+        }
+    };
+
+    const toggleSelectSku = (sku: string) => {
+        const newSet = new Set(selectedSkus);
+        if (newSet.has(sku)) {
+            newSet.delete(sku);
+        } else {
+            newSet.add(sku);
+        }
+        setSelectedSkus(newSet);
+    };
+
+    const selectAllWithRecommendation = () => {
+        const skusWithAction = paginatedData.filter(r => r.price_action && r.price_action !== 'HOLD').map(r => r.sku);
+        setSelectedSkus(new Set(skusWithAction));
+    };
+
+    const clearSelection = () => setSelectedSkus(new Set());
+
+    const handleCreateTasks = async () => {
+        // TODO: integrate with task API
+        const selectedRows = data.filter(r => selectedSkus.has(r.sku));
+        console.log('Creating tasks for:', selectedRows);
+        alert(`Создано ${selectedRows.length} задач для менеджера: ${taskAssignee || 'Не указан'}`);
+        setShowTaskModal(false);
+        clearSelection();
+    };
+
+    const exportSelectedCsv = () => {
+        const selectedRows = data.filter(r => selectedSkus.has(r.sku));
+        const headers = ['SKU', 'Выручка', 'Заказы', 'Сток', 'Рекомендация', 'Новая цена'];
+        const rows = selectedRows.map(r => [
+            r.sku, r.revenue, r.orders, r.stock, r.price_action || '-', r.recommended_price || '-'
+        ]);
+        const csv = [headers, ...rows].map(r => r.join(',')).join('\n');
+        const blob = new Blob([csv], { type: 'text/csv' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'selected_skus.csv';
+        a.click();
     };
 
     const getSortIcon = (field: SortField) => {
@@ -273,6 +334,43 @@ export default function FunnelPage() {
                     </div>
                 </div>
 
+                {/* Bulk Actions Panel */}
+                {selectedSkus.size > 0 && (
+                    <div className="bg-purple-50 border border-purple-200 rounded-xl p-4 flex items-center justify-between">
+                        <div className="flex items-center gap-4">
+                            <span className="font-medium text-purple-900">{selectedSkus.size} SKU выбрано</span>
+                            <button
+                                onClick={selectAllWithRecommendation}
+                                className="text-sm text-purple-600 hover:text-purple-800 underline"
+                            >
+                                Выбрать все с рекомендацией
+                            </button>
+                        </div>
+                        <div className="flex items-center gap-2">
+                            <button
+                                onClick={exportSelectedCsv}
+                                className="flex items-center gap-2 px-3 py-2 bg-white border border-gray-200 rounded-lg text-sm hover:bg-gray-50 transition-all"
+                            >
+                                <Download size={16} />
+                                Экспорт CSV
+                            </button>
+                            <button
+                                onClick={() => setShowTaskModal(true)}
+                                className="flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg text-sm hover:bg-purple-700 transition-all"
+                            >
+                                <ListTodo size={16} />
+                                Создать задачи
+                            </button>
+                            <button
+                                onClick={clearSelection}
+                                className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-all"
+                            >
+                                <X size={18} />
+                            </button>
+                        </div>
+                    </div>
+                )}
+
                 {/* SKU Table */}
                 <Card>
                     <div className="flex items-center justify-between mb-4">
@@ -285,6 +383,11 @@ export default function FunnelPage() {
                         <table className="w-full text-sm">
                             <thead>
                                 <tr className="border-b border-gray-200">
+                                    <th className="py-3 px-2">
+                                        <button onClick={toggleSelectAll} className="text-gray-500 hover:text-purple-600">
+                                            {selectedSkus.size === paginatedData.length && paginatedData.length > 0 ? <CheckSquare size={18} /> : <Square size={18} />}
+                                        </button>
+                                    </th>
                                     <th className="text-left py-3 px-2 font-medium text-gray-600 cursor-pointer hover:text-gray-900" onClick={() => handleSort('sku')}>
                                         <div className="flex items-center gap-1">SKU {getSortIcon('sku')}</div>
                                     </th>
@@ -315,7 +418,12 @@ export default function FunnelPage() {
                             </thead>
                             <tbody>
                                 {paginatedData.map((row) => (
-                                    <tr key={row.sku} className="border-b border-gray-100 hover:bg-gray-50">
+                                    <tr key={row.sku} className={`border-b border-gray-100 hover:bg-gray-50 ${selectedSkus.has(row.sku) ? 'bg-purple-50' : ''}`}>
+                                        <td className="py-3 px-2">
+                                            <button onClick={() => toggleSelectSku(row.sku)} className="text-gray-500 hover:text-purple-600">
+                                                {selectedSkus.has(row.sku) ? <CheckSquare size={18} className="text-purple-600" /> : <Square size={18} />}
+                                            </button>
+                                        </td>
                                         <td className="py-3 px-2 font-mono text-gray-900">{row.sku}</td>
                                         <td className="py-3 px-2 text-right font-medium">{(row.revenue / 1000).toFixed(0)}K ₽</td>
                                         <td className="py-3 px-2 text-right text-gray-600">{(row.views / 1000).toFixed(1)}K</td>
@@ -415,6 +523,63 @@ export default function FunnelPage() {
                     </Card>
                 )}
             </main>
+
+            {/* Task Creation Modal */}
+            {showTaskModal && (
+                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+                    <div className="bg-white rounded-xl p-6 w-full max-w-md shadow-xl">
+                        <div className="flex items-center justify-between mb-4">
+                            <h3 className="text-lg font-semibold text-gray-900">Создать задачи</h3>
+                            <button onClick={() => setShowTaskModal(false)} className="text-gray-500 hover:text-gray-700">
+                                <X size={20} />
+                            </button>
+                        </div>
+                        <div className="space-y-4">
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Выбрано SKU</label>
+                                <div className="text-2xl font-bold text-purple-600">{selectedSkus.size}</div>
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Менеджер</label>
+                                <select
+                                    value={taskAssignee}
+                                    onChange={(e) => setTaskAssignee(e.target.value)}
+                                    className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                                >
+                                    <option value="">Выберите менеджера</option>
+                                    <option value="manager1">Менеджер 1</option>
+                                    <option value="manager2">Менеджер 2</option>
+                                    <option value="manager3">Менеджер 3</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Комментарий</label>
+                                <textarea
+                                    value={taskNote}
+                                    onChange={(e) => setTaskNote(e.target.value)}
+                                    placeholder="Инструкции для менеджера..."
+                                    rows={3}
+                                    className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                                />
+                            </div>
+                            <div className="flex gap-3 pt-2">
+                                <button
+                                    onClick={() => setShowTaskModal(false)}
+                                    className="flex-1 px-4 py-2 border border-gray-200 rounded-lg text-gray-600 hover:bg-gray-50 transition-all"
+                                >
+                                    Отмена
+                                </button>
+                                <button
+                                    onClick={handleCreateTasks}
+                                    className="flex-1 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-all"
+                                >
+                                    Создать {selectedSkus.size} задач
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }
