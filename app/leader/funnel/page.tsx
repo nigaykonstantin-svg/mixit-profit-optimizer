@@ -3,7 +3,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { getCurrentUser, AuthUser } from '@/modules/auth';
-import { USER_ROLES } from '@/modules/users';
+import { USER_ROLES, getExecutors } from '@/modules/users';
 import { Card, Button, Input } from '@/modules/shared';
 import {
     ArrowLeft,
@@ -547,9 +547,9 @@ export default function FunnelPage() {
                                     className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
                                 >
                                     <option value="">Выберите менеджера</option>
-                                    <option value="manager1">Менеджер 1</option>
-                                    <option value="manager2">Менеджер 2</option>
-                                    <option value="manager3">Менеджер 3</option>
+                                    {getExecutors().map(exec => (
+                                        <option key={exec.id} value={exec.id}>{exec.avatar} {exec.name}</option>
+                                    ))}
                                 </select>
                             </div>
                             <div>
