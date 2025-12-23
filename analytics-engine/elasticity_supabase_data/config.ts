@@ -1,21 +1,88 @@
 // ================================
-// ELASTICITY CONFIG
+// ELASTICITY CONFIG - Full Specification
 // ================================
 
 export const CONFIG = {
-    excludeDates: [
-        '2024-11-26',
-        '2024-11-27',
-        '2024-11-28',
-        '2024-11-29',
-        '2024-11-30',
-    ],
+    // ===== INPUT =====
+    input: {
+        file_path: 'Fact2026.xlsx',
+        sheet_name: 'Fact2026',
+        date_col: 'date',
+        sku_col: 'sku',
+        platform_col: 'platform',
+    },
 
-    minDaysPriceConstant: 2,
-    minOrders: 50,
+    // ===== BLACK FRIDAY EXCLUDE =====
+    blackFridayExclude: {
+        month: 11,
+        dayFrom: 26,
+        dayTo: 30,
+    },
 
-    priceBuckets: [-0.1, -0.05, 0, 0.03, 0.05],
-    adBuckets: [0, 0.5, 1, 1.2],
+    // ===== FILTERS =====
+    filters: {
+        platformValue: 'WB',
+        minDaysPerSku: 25,
+        minTotalOrdersPerSku: 30,
+        minUniquePrices: 4,
+    },
+
+    // ===== COLUMN MAPPING =====
+    columns: {
+        // Price
+        clientPrice: 'customer_price',
+        // Volume
+        orders: 'orders',
+        revenue: 'revenue_gross',
+        // Funnel
+        impressions: 'impressions',
+        clicks: 'clicks',
+        addToCart: 'add_to_cart',
+        ctr: 'ctr',
+        crCart: 'cr_cart',
+        crOrder: 'cr_order',
+        // Ads (drr_search may be % or rubles)
+        adSearch: 'drr_search',
+        adTotal: null as string | null,
+    },
+
+    // ===== BUSINESS =====
+    business: {
+        returnsReservePct: 0.03,
+        cm0Col: null as string | null,
+        profitCol: 'profit_incl_marketing_exp',
+        minMarginPct: 0.10,
+    },
+
+    // ===== SCENARIO GRID =====
+    scenarioGrid: {
+        priceDeltas: [-0.10, -0.05, 0.0, 0.03, 0.05],
+        adMults: [0.0, 0.5, 1.0, 1.2],
+    },
+
+    // ===== OUTPUT =====
+    output: {
+        recommendationsCsv: 'sku_recommendations.csv',
+        modelsCsv: 'sku_models.csv',
+    },
 };
 
-export const EXCLUDED_DATES = new Set(CONFIG.excludeDates);
+// Helper: Generate excluded dates from Black Friday config
+export function getExcludedDates(): string[] {
+    const { month, dayFrom, dayTo } = CONFIG.blackFridayExclude;
+    const dates: string[] = [];
+    const year = 2024;
+
+    for (let day = dayFrom; day <= dayTo; day++) {
+        const m = String(month).padStart(2, '0');
+        const d = String(day).padStart(2, '0');
+        dates.push(`${year}-${m}-${d}`);
+    }
+
+    return dates;
+}
+
+export const EXCLUDED_DATES = new Set(getExcludedDates());
+
+// Type exports
+export type ElasticityConfig = typeof CONFIG;
