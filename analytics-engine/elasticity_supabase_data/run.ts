@@ -2,10 +2,9 @@
 // ELASTICITY PIPELINE RUNNER
 // ================================
 
-import { loadLastNDays, loadFact2026 } from './loader';
-import { prepareAllSkus } from './prepare';
-import { analyzeAllElasticity, ElasticityResult, getSkusByRecommendation } from './elasticity';
-import { ELASTICITY_CONFIG } from './config';
+import { loadFact2026 } from './loader';
+import { prepareData, groupBySku } from './prepare';
+import { calculateSkuElasticity, ElasticityResult } from './elasticity';
 
 /**
  * Pipeline result
@@ -15,46 +14,45 @@ export interface ElasticityPipelineResult {
     skusAnalyzed: number;
     results: ElasticityResult[];
     summary: {
-        upAggressive: number;
-        upModerate: number;
+        up: number;
         hold: number;
-        downModerate: number;
-        downAggressive: number;
+        down: number;
         unknown: number;
     };
 }
 
 /**
- * Run full elasticity pipeline for last N days
+ * Run full elasticity pipeline
  */
-export async function runElasticityPipeline(
-    days: number = ELASTICITY_CONFIG.rollingWindowDays
-): Promise<ElasticityPipelineResult> {
+export async function runElasticityPipeline(): Promise<ElasticityPipelineResult> {
     const runDate = new Date().toISOString().slice(0, 10);
 
-    console.log(`[Elasticity] Starting pipeline for last ${days} days...`);
-
-    // 1. Load data
     console.log('[Elasticity] Loading data from fact2026...');
-    const rawData = await loadLastNDays(days);
-    console.log(`[Elasticity] Loaded ${rawData.length} rows`);
+    const rawData = await loadFact2026();
+    console.log(`[Elasticity] Loaded ${rawData?.length || 0} rows`);
 
-    // 2. Prepare time series
-    console.log('[Elasticity] Preparing time series...');
-    const series = prepareAllSkus(rawData);
-    console.log(`[Elasticity] Prepared ${series.length} SKUs`);
+    console.log('[Elasticity] Preparing data...');
+    const prepared = prepareData(rawData || []);
+    console.log(`[Elasticity] Prepared ${prepared.length} rows`);
 
-    // 3. Calculate elasticity
+    console.log('[Elasticity] Grouping by SKU...');
+    const grouped = groupBySku(prepared);
+    console.log(`[Elasticity] Found ${grouped.size} SKUs`);
+
     console.log('[Elasticity] Calculating elasticity...');
-    const results = analyzeAllElasticity(series);
+    const results: ElasticityResult[] = [];
 
-    // 4. Generate summary
+    for (const [, skuData] of grouped) {
+        const result = calculateSkuElasticity(skuData);
+        if (result) {
+            results.push(result);
+        }
+    }
+
     const summary = {
-        upAggressive: getSkusByRecommendation(results, 'UP_AGGRESSIVE').length,
-        upModerate: getSkusByRecommendation(results, 'UP_MODERATE').length,
-        hold: getSkusByRecommendation(results, 'HOLD').length,
-        downModerate: getSkusByRecommendation(results, 'DOWN_MODERATE').length,
-        downAggressive: getSkusByRecommendation(results, 'DOWN_AGGRESSIVE').length,
+        up: results.filter(r => r.recommendation === 'UP').length,
+        hold: results.filter(r => r.recommendation === 'HOLD').length,
+        down: results.filter(r => r.recommendation === 'DOWN').length,
         unknown: results.filter(r => r.category === 'UNKNOWN').length,
     };
 
@@ -70,50 +68,15 @@ export async function runElasticityPipeline(
 }
 
 /**
- * Run pipeline for specific date range
- */
-export async function runElasticityForRange(
-    startDate: string,
-    endDate: string,
-    skuFilter?: string[]
-): Promise<ElasticityPipelineResult> {
-    const runDate = new Date().toISOString().slice(0, 10);
-
-    const rawData = await loadFact2026(startDate, endDate, skuFilter);
-    const series = prepareAllSkus(rawData);
-    const results = analyzeAllElasticity(series);
-
-    const summary = {
-        upAggressive: getSkusByRecommendation(results, 'UP_AGGRESSIVE').length,
-        upModerate: getSkusByRecommendation(results, 'UP_MODERATE').length,
-        hold: getSkusByRecommendation(results, 'HOLD').length,
-        downModerate: getSkusByRecommendation(results, 'DOWN_MODERATE').length,
-        downAggressive: getSkusByRecommendation(results, 'DOWN_AGGRESSIVE').length,
-        unknown: results.filter(r => r.category === 'UNKNOWN').length,
-    };
-
-    return {
-        runDate,
-        skusAnalyzed: results.length,
-        results,
-        summary,
-    };
-}
-
-/**
  * Get elasticity for single SKU
  */
-export async function getSkuElasticity(
-    sku: string,
-    days: number = 30
-): Promise<ElasticityResult | null> {
-    const rawData = await loadLastNDays(days, [sku]);
-    const series = prepareAllSkus(rawData);
+export async function getSkuElasticity(sku: string): Promise<ElasticityResult | null> {
+    const rawData = await loadFact2026();
+    const prepared = prepareData(rawData || []).filter(r => r.sku === sku);
 
-    if (series.length === 0) return null;
+    if (prepared.length === 0) return null;
 
-    const results = analyzeAllElasticity(series);
-    return results[0] || null;
+    return calculateSkuElasticity(prepared);
 }
 
 // Export all
