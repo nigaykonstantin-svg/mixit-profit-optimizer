@@ -19,8 +19,6 @@ export interface FunnelStage {
  */
 export interface SkuFunnelMetrics {
     sku: string;
-    name: string;
-    brand: string;
     stages: FunnelStage[];
     overallCR: number;
     revenuePerView: number;
@@ -92,8 +90,6 @@ export function calculateSkuFunnelMetrics(row: FunnelRow): SkuFunnelMetrics {
 
     return {
         sku: row.sku,
-        name: row.name,
-        brand: row.brand,
         stages,
         overallCR: views > 0 ? (orders / views) * 100 : 0,
         revenuePerView: views > 0 ? revenue / views : 0,
@@ -127,7 +123,7 @@ export function aggregateByBrand(rows: FunnelRow[]): CategoryFunnelMetrics[] {
     for (const row of rows) {
         if (!row.sku) continue;
 
-        const brand = row.brand || 'Без бренда';
+        const brand = 'MIXIT'; // brand removed from FunnelRow
         const existing = brandMap.get(brand) || {
             views: 0, clicks: 0, cart: 0, orders: 0, revenue: 0, priceSum: 0, count: 0,
         };
@@ -233,8 +229,8 @@ export function identifyBottlenecks(metrics: SkuFunnelMetrics): Bottleneck[] {
 export function getTopProblematicSkus(
     rows: FunnelRow[],
     limit: number = 10
-): Array<{ sku: string; name: string; bottleneck: Bottleneck }> {
-    const results: Array<{ sku: string; name: string; bottleneck: Bottleneck; score: number }> = [];
+): Array<{ sku: string; bottleneck: Bottleneck }> {
+    const results: Array<{ sku: string; bottleneck: Bottleneck; score: number }> = [];
 
     for (const row of rows) {
         if (!row.sku) continue;
@@ -249,7 +245,6 @@ export function getTopProblematicSkus(
 
             results.push({
                 sku: row.sku,
-                name: row.name,
                 bottleneck: worst,
                 score: worst.severity === 'critical' ? worst.dropoffRate + 100 : worst.dropoffRate,
             });
@@ -259,7 +254,7 @@ export function getTopProblematicSkus(
     return results
         .sort((a, b) => b.score - a.score)
         .slice(0, limit)
-        .map(({ sku, name, bottleneck }) => ({ sku, name, bottleneck }));
+        .map(({ sku, bottleneck }) => ({ sku, bottleneck }));
 }
 
 /**
@@ -279,12 +274,11 @@ export function getHighDrrSkus(
     rows: FunnelRow[],
     threshold: number = 25,
     limit: number = 10
-): Array<{ sku: string; name: string; totalDrr: number; breakdown: Record<string, number> }> {
+): Array<{ sku: string; totalDrr: number; breakdown: Record<string, number> }> {
     return rows
         .filter(row => row.sku && calculateTotalDRR(row) > threshold)
         .map(row => ({
             sku: row.sku,
-            name: row.name,
             totalDrr: calculateTotalDRR(row),
             breakdown: {
                 search: row.drr_search || 0,
