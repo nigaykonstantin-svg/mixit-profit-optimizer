@@ -309,7 +309,8 @@ export default function FunnelPage() {
                                     <th className="text-right py-3 px-2 font-medium text-gray-600 cursor-pointer hover:text-gray-900" onClick={() => handleSort('stock')}>
                                         <div className="flex items-center justify-end gap-1">Сток {getSortIcon('stock')}</div>
                                     </th>
-                                    <th className="text-center py-3 px-2 font-medium text-gray-600">Статус</th>
+                                    <th className="text-center py-3 px-2 font-medium text-gray-600">Реком.</th>
+                                    <th className="text-right py-3 px-2 font-medium text-gray-600">Новая цена</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -332,9 +333,15 @@ export default function FunnelPage() {
                                             <span className={row.stock < 20 ? 'text-red-600 font-medium' : 'text-gray-600'}>{row.stock}</span>
                                         </td>
                                         <td className="py-3 px-2 text-center">
-                                            <span className={`px-2 py-1 rounded-full text-xs font-medium ${getQualityColor(row.conversion_quality)}`}>
-                                                {row.conversion_quality === 'Normal' ? '✓' : row.conversion_quality === 'Overpriced' ? '↓' : '⚠'}
+                                            <span className={`px-2 py-1 rounded-full text-xs font-medium ${row.price_action === 'UP' ? 'bg-green-100 text-green-700' :
+                                                    row.price_action === 'DOWN' ? 'bg-red-100 text-red-700' :
+                                                        'bg-gray-100 text-gray-700'
+                                                }`}>
+                                                {row.price_action === 'UP' ? '↑' : row.price_action === 'DOWN' ? '↓' : '—'} {row.price_step_pct ? `${row.price_step_pct}%` : ''}
                                             </span>
+                                        </td>
+                                        <td className="py-3 px-2 text-right text-gray-600">
+                                            {row.recommended_price ? `${row.recommended_price.toLocaleString()} ₽` : '—'}
                                         </td>
                                     </tr>
                                 ))}

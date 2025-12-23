@@ -1,160 +1,119 @@
-// =========================================
-// PRICE ENGINE - Core Price Decision Logic
-// =========================================
+import { PRICE_ENGINE_CONFIG as C } from './price-config';
+import { applyGuards } from './price-guards';
+import { PriceEngineInput, PriceRecommendation } from './price-types';
 
-import { FunnelRow } from '@/modules/import/funnel-parser';
-import { PriceAction, PricingDecision, AdsAction, SkuMode, BlockReason } from './types';
-
-// =========================================
-// GUARDS - Safety checks
-// =========================================
-
-interface GuardResult {
-    blocked: boolean;
-    reason?: BlockReason;
+function toDateISO(d: Date): string {
+    return d.toISOString().slice(0, 10);
 }
 
-function checkGuards(row: FunnelRow): GuardResult {
-    if (row.clicks < 30 || row.orders < 10) {
-        return { blocked: true, reason: 'INSUFFICIENT_DATA' };
-    }
-
-    if (row.stock_units < 10) {
-        return { blocked: true, reason: 'LOW_STOCK_GUARD' };
-    }
-
-    return { blocked: false };
+function addDaysISO(isoDate: string, days: number): string {
+    const d = new Date(isoDate + 'T00:00:00Z');
+    d.setUTCDate(d.getUTCDate() + days);
+    return toDateISO(d);
 }
 
-// =========================================
-// MODE ENGINE - Detect SKU mode
-// =========================================
-
-function detectMode(row: FunnelRow): SkuMode {
-    if (row.revenue <= 0) return 'STOP';
-
-    const stock_cover_days = row.stock_units / Math.max(row.orders, 1);
-
-    if (stock_cover_days >= 120) return 'CLEAR';
-    if (row.revenue > 0 && stock_cover_days >= 15) return 'COW';
-
-    return 'GROWTH';
+function clampAbsStepForGold(stepPct: number): number {
+    const maxAbs = C.gold_max_abs_step_pct;
+    if (stepPct > maxAbs) return maxAbs;
+    if (stepPct < -maxAbs) return -maxAbs;
+    return stepPct;
 }
 
-// =========================================
-// PRICE DECISION
-// =========================================
-
-export function priceDecision(row: FunnelRow): {
-    action: PriceAction;
-    step: number;
-} {
-    const stock_cover_days = row.stock_units / Math.max(row.orders, 1);
-
-    // CLEAR: too much stock
-    if (stock_cover_days >= 120) {
-        return { action: 'DOWN', step: -0.03 };
-    }
-
-    // LOW_STOCK: raise price to slow sales
-    if (stock_cover_days <= 10) {
-        return { action: 'UP', step: +0.05 };
-    }
-
-    // OVERPRICED: high CTR but low CR
-    if (row.ctr >= 1.5 && row.cr_order < 1.5) {
-        return { action: 'DOWN', step: -0.03 };
-    }
-
-    return { action: 'HOLD', step: 0 };
+function roundPrice(p: number): number {
+    if (!isFinite(p) || p <= 0) return 0;
+    return Math.round(p);
 }
 
-// =========================================
-// DRR & ADS DECISION
-// =========================================
-
-export function calculateTotalDRR(row: FunnelRow): number {
-    return (row.drr_search || 0) +
-        (row.drr_media || 0) +
-        (row.drr_bloggers || 0) +
-        (row.drr_other || 0);
+function computeStockCoverDays(input: PriceEngineInput): number | null {
+    if (typeof input.stock_cover_days === 'number' && isFinite(input.stock_cover_days)) {
+        return input.stock_cover_days;
+    }
+    const orders7 = input.orders_7d ?? 0;
+    const stock = input.stock_units ?? 0;
+    const salesPerDay = orders7 / 7;
+    if (salesPerDay <= 0) return null;
+    return stock / salesPerDay;
 }
 
-export function adsDecision(row: FunnelRow): AdsAction {
-    const totalDRR = calculateTotalDRR(row);
+export function priceEngineV1(input: PriceEngineInput): PriceRecommendation {
+    const today = input.today || toDateISO(new Date());
 
-    if (totalDRR > 30) return 'PAUSE';
-    if (totalDRR > 20) return 'DOWN';
-    if (totalDRR < 10 && row.cr_order > 2) return 'SCALE';
+    // 1) GUARDS
+    const guards = applyGuards(input);
+    if (guards.hold) return guards.hold;
 
-    return 'HOLD';
-}
+    const stockCover = computeStockCoverDays(input);
 
-// =========================================
-// FULL DECISION FOR SKU
-// =========================================
+    // 2) TRIGGERS (only 3)
+    let action: PriceRecommendation['price_action'] = 'HOLD';
+    let stepPct = 0;
+    let reason: PriceRecommendation['reason_code'] = 'HOLD_NO_TRIGGER';
 
-export function getDecisionForSku(row: FunnelRow): PricingDecision {
-    // Check guards first
-    const guard = checkGuards(row);
-
-    if (guard.blocked) {
-        return {
-            sku: row.sku,
-            mode: detectMode(row),
-            action: 'HOLD',
-            price_step_pct: 0,
-            ads_action: 'HOLD',
-            expected_profit_delta: 0,
-            block_reason: guard.reason,
-            confidence_score: 0,
-            explanation: `Блокировка: ${guard.reason}`,
-        };
+    // Trigger A: CLEAR
+    if (stockCover !== null && stockCover >= C.clear_stock_cover_days) {
+        action = 'DOWN';
+        stepPct = C.step_down_pct;
+        reason = 'CLEAR';
     }
 
-    // Get mode and decisions
-    const mode = detectMode(row);
-    const price = priceDecision(row);
-    const ads = adsDecision(row);
+    // Trigger B: LOW STOCK (higher priority than CLEAR)
+    if (stockCover !== null && stockCover <= C.low_stock_cover_days) {
+        action = 'UP';
+        stepPct = C.step_up_pct;
+        reason = 'LOW_STOCK';
+    }
 
-    // Build explanation
-    const explanations: string[] = [];
+    // Trigger C: OVERPRICED (only if not LOW STOCK)
+    if (reason === 'HOLD_NO_TRIGGER' || reason === 'CLEAR') {
+        const ctr = input.ctr_pct ?? 0;
+        const crOrder = input.cr_order_pct ?? 0;
+        if (ctr >= C.ctr_ok_pct && crOrder < C.cr_order_low_pct) {
+            action = 'DOWN';
+            stepPct = C.step_down_pct;
+            reason = 'OVERPRICED';
+        }
+    }
 
-    if (mode === 'STOP') explanations.push('Убыточный SKU');
-    if (mode === 'CLEAR') explanations.push('Переизбыток стока');
-    if (mode === 'COW') explanations.push('Дойная корова');
-    if (mode === 'GROWTH') explanations.push('Потенциал роста');
+    // 3) MIN MARGIN BLOCK (block only DOWN)
+    const hasMargin = typeof input.min_margin_pct === 'number' && isFinite(input.min_margin_pct);
+    if (action === 'DOWN' && hasMargin && (input.min_margin_pct as number) < C.min_margin_pct) {
+        action = 'HOLD';
+        stepPct = 0;
+        reason = 'MIN_MARGIN_BLOCK';
+    }
 
-    if (price.action === 'UP') explanations.push(`Повысить цену на ${Math.abs(price.step * 100)}%`);
-    if (price.action === 'DOWN') explanations.push(`Снизить цену на ${Math.abs(price.step * 100)}%`);
+    // 4) GOLD PROTECTION (clamp step + optional additional rule later)
+    if (input.is_gold) {
+        stepPct = clampAbsStepForGold(stepPct);
+        if (stepPct === 0) {
+            action = 'HOLD';
+            reason = 'GOLD_PROTECTION';
+        }
+    }
 
-    if (ads === 'PAUSE') explanations.push('Остановить рекламу');
-    if (ads === 'DOWN') explanations.push('Снизить рекламу');
-    if (ads === 'SCALE') explanations.push('Масштабировать рекламу');
+    const currentPrice = input.avg_price ?? 0;
+    const recommended = action === 'HOLD'
+        ? null
+        : roundPrice(currentPrice * (1 + stepPct / 100));
+
+    const nextReview = (action === 'HOLD') ? null : addDaysISO(today, C.ttl_days);
 
     return {
-        sku: row.sku,
-        mode,
-        action: price.action,
-        price_step_pct: price.step,
-        ads_action: ads,
-        expected_profit_delta: 0,
-        confidence_score: 0.8,
-        explanation: explanations.join('. '),
+        sku: input.sku,
+        price_action: action,
+        price_step_pct: stepPct,
+        recommended_price: recommended,
+        reason_code: reason,
+        ttl_days: C.ttl_days,
+        next_review_date: nextReview,
+        debug: {
+            stock_cover_days: stockCover,
+            ctr_pct: input.ctr_pct,
+            cr_order_pct: input.cr_order_pct,
+            avg_price: input.avg_price,
+            stock_units: input.stock_units,
+            clicks_7d: input.clicks_7d,
+            orders_7d: input.orders_7d,
+        },
     };
-}
-
-// =========================================
-// BATCH ANALYSIS
-// =========================================
-
-export function analyzeAllSkus(rows: FunnelRow[]): PricingDecision[] {
-    return rows
-        .filter(row => row.sku)
-        .map(getDecisionForSku);
-}
-
-export function getActionableSkus(rows: FunnelRow[]): PricingDecision[] {
-    return analyzeAllSkus(rows)
-        .filter(d => d.action !== 'HOLD' || d.ads_action !== 'HOLD');
 }

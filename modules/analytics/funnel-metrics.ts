@@ -292,12 +292,13 @@ export function getHighDrrSkus(
 }
 
 /**
- * Analyzed funnel row with computed metrics
+ * Analyzed funnel row with computed metrics + price recommendation
  */
 export interface AnalyzedFunnelRow {
     sku: string;
     revenue: number;
     views: number;
+    clicks: number;
     orders: number;
     ctr: number;
     cr_order: number;
@@ -307,10 +308,20 @@ export interface AnalyzedFunnelRow {
     stock: number;
     price: number;
     total_drr: number;
+
+    // Price Engine V1
+    price_action: 'UP' | 'DOWN' | 'HOLD';
+    price_step_pct: number;
+    recommended_price: number | null;
+    reason_code: string;
+    next_review_date: string | null;
 }
 
+// Import price engine
+import { priceEngineV1 } from '@/modules/pricing/price-engine';
+
 /**
- * Analyze funnel data with computed quality metrics
+ * Analyze funnel data with computed quality metrics + price recommendations
  */
 export function analyzeFunnel(data: FunnelRow[]): AnalyzedFunnelRow[] {
     return data.map(row => {
@@ -325,10 +336,29 @@ export function analyzeFunnel(data: FunnelRow[]): AnalyzedFunnelRow[] {
                 row.stock_units < 10 ? "Low stock" :
                     "Normal";
 
+        const total_drr =
+            (row.drr_search || 0) +
+            (row.drr_media || 0) +
+            (row.drr_bloggers || 0) +
+            (row.drr_other || 0);
+
+        // Price Engine V1
+        const rec = priceEngineV1({
+            sku: row.sku,
+            clicks_7d: row.clicks ?? 0,
+            orders_7d: row.orders ?? 0,
+            ctr_pct: row.ctr ?? 0,
+            cr_order_pct: row.cr_order ?? 0,
+            avg_price: row.avg_price ?? 0,
+            client_price: row.client_price ?? undefined,
+            stock_units: row.stock_units ?? 0,
+        });
+
         return {
             sku: row.sku,
             revenue: row.revenue,
             views: row.views,
+            clicks: row.clicks,
             orders: row.orders,
             ctr: row.ctr,
             cr_order: row.cr_order,
@@ -339,12 +369,15 @@ export function analyzeFunnel(data: FunnelRow[]): AnalyzedFunnelRow[] {
 
             stock: row.stock_units,
             price: row.avg_price,
+            total_drr,
 
-            total_drr:
-                (row.drr_search || 0) +
-                (row.drr_media || 0) +
-                (row.drr_bloggers || 0) +
-                (row.drr_other || 0),
+            // Price recommendations
+            price_action: rec.price_action,
+            price_step_pct: rec.price_step_pct,
+            recommended_price: rec.recommended_price,
+            reason_code: rec.reason_code,
+            next_review_date: rec.next_review_date,
         };
     });
 }
+
