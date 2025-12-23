@@ -1,18 +1,63 @@
 // supabase/functions/wb_funnel_import/index.ts
-// Supports: FormData file upload OR JSON { "path": "bucket/file.xlsx" }
-
 import { serve } from "https://deno.land/std@0.131.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import * as XLSX from "https://esm.sh/xlsx@0.18.5";
-import Papa from "https://esm.sh/papaparse@5.4.1";
 
 const corsHeaders = {
     "Access-Control-Allow-Origin": "*",
     "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-serve(async (req) => {
-    // CORS preflight
+/* ============================
+   HEADER NORMALIZATION
+============================ */
+
+function normalize(h: string): string {
+    return h
+        .toLowerCase()
+        .replace(/\s+/g, "")
+        .replace(/[^\p{L}\p{N}]/gu, "");
+}
+
+/* ============================
+   COLUMN MAP - EXACT from Excel
+============================ */
+
+const HEADER_MAP: Record<string, string> = {
+    // SKU
+    "артикул": "sku",
+    "артикулwb": "sku",
+
+    // FUNNEL
+    "суммапоказы": "views",
+    "суммаклики": "clicks",
+    "суммавкорзину": "cart",
+    "суммазаказаношт": "orders",
+
+    // CONVERSION
+    "ctr": "ctr",
+    "cr0": "cr_order",
+    "crвкорзину": "cr_cart",
+    "crвзаказ": "cr_order",
+
+    // PRICES
+    "ценаруб": "avg_price",
+    "ценапокупателя": "avg_price",
+
+    // REVENUE
+    "суммавыручкарубсндс": "revenue",
+
+    // STOCK
+    "сумматекущийостатокшт": "stock_units",
+
+    // DRR
+    "drrпоиск": "drr_search",
+    "drrмедиа": "drr_media",
+    "drrблогеры": "drr_bloggers",
+    "drростальное": "drr_other",
+};
+
+serve(async (req: any) => {
     if (req.method === "OPTIONS") {
         return new Response("ok", { headers: corsHeaders });
     }
@@ -29,7 +74,6 @@ serve(async (req) => {
         const contentType = req.headers.get("content-type") || "";
 
         if (contentType.includes("application/json")) {
-            // --- JSON Mode: Read from Supabase Storage ---
             const { path, bucket = "imports" } = await req.json();
 
             if (!path) {
@@ -39,274 +83,108 @@ serve(async (req) => {
                 );
             }
 
-            console.log(`Downloading from storage: ${bucket}/${path}`);
-
             const { data, error } = await supabase.storage.from(bucket).download(path);
 
             if (error || !data) {
                 return new Response(
-                    JSON.stringify({ error: `Storage error: ${error?.message || "File not found"}` }),
+                    JSON.stringify({ error: `Storage error: ${JSON.stringify(error)}` }),
                     { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
                 );
             }
 
             buffer = await data.arrayBuffer();
-            filename = path.toLowerCase();
-
-        } else if (contentType.includes("multipart/form-data")) {
-            // --- FormData Mode: Direct file upload ---
-            const form = await req.formData();
-            const file = form.get("file") as File;
+            filename = path;
+        } else {
+            const formData = await req.formData();
+            const file = formData.get("file") as File;
 
             if (!file) {
                 return new Response(
-                    JSON.stringify({ error: "file missing" }),
+                    JSON.stringify({ error: "file is required" }),
                     { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
                 );
             }
 
             buffer = await file.arrayBuffer();
-            filename = file.name.toLowerCase();
-
-        } else {
-            return new Response(
-                JSON.stringify({ error: "Unsupported content type. Use multipart/form-data or application/json" }),
-                { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-            );
+            filename = file.name;
         }
 
-        // --- Parse file ---
-        let jsonRows: any[] = [];
-        let sheetNames: string[] = [];
+        // Parse Excel
+        const uint8Array = new Uint8Array(buffer);
+        const workbook = XLSX.read(uint8Array, { type: "array" });
+        const sheet = workbook.Sheets[workbook.SheetNames[0]];
 
-        if (filename.endsWith(".xlsx") || filename.endsWith(".xls")) {
-            const uint8Array = new Uint8Array(buffer);
-            const workbook = XLSX.read(uint8Array, { type: "array" });
+        const raw = XLSX.utils.sheet_to_json<Record<string, unknown>>(sheet, { defval: null });
 
-            sheetNames = workbook.SheetNames;
-            console.log("Available sheets:", sheetNames);
+        console.log("Total rows:", raw.length);
+        if (raw.length > 0) {
+            console.log("Headers:", Object.keys(raw[0]));
+        }
 
-            // NEW FORMAT: Single sheet Excel - always use first sheet (index 0)
-            const sheetName = sheetNames[0];
+        // Map rows
+        const rows = raw
+            .map((row: any) => {
+                const out: any = {};
 
-            console.log(`Using first sheet: ${sheetName}`);
-            const sheet = workbook.Sheets[sheetName];
+                for (const col in row) {
+                    const key = HEADER_MAP[normalize(col)];
+                    if (!key) continue;
 
-            // Parse with range option to skip potential header rows
-            // First get all rows without headers
-            const allRows = XLSX.utils.sheet_to_json(sheet, { header: 1 });
+                    const val = row[col];
 
-            // Find the row with actual headers (contains "Артикул")
-            let headerRowIndex = 0;
-            for (let i = 0; i < Math.min(10, allRows.length); i++) {
-                const row = allRows[i] as any[];
-                if (row && row.some((cell: any) => String(cell).includes("Артикул"))) {
-                    headerRowIndex = i;
-                    break;
+                    if (key === "sku") {
+                        out[key] = String(val || "").trim();
+                    } else {
+                        const num = Number(
+                            String(val || "")
+                                .replace("%", "")
+                                .replace(",", ".")
+                        );
+                        out[key] = isNaN(num) ? 0 : num;
+                    }
                 }
-            }
 
-            console.log("Header row index:", headerRowIndex);
-
-            // Re-parse with correct range
-            jsonRows = XLSX.utils.sheet_to_json(sheet, {
-                defval: null,
-                range: headerRowIndex
-            });
-
-            console.log("Sheet count:", sheetNames.length);
-            console.log("All headers:", jsonRows[0] ? Object.keys(jsonRows[0]) : "empty");
-
-        } else if (filename.endsWith(".csv")) {
-            const decoder = new TextDecoder("utf-8");
-            const text = decoder.decode(buffer);
-            const parsed = Papa.parse(text, { header: true, skipEmptyLines: true });
-            jsonRows = parsed.data;
-
-        } else {
-            return new Response(
-                JSON.stringify({ error: "Unsupported file type. Use .xlsx or .csv" }),
-                { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-            );
-        }
-
-        console.log(`Parsed ${jsonRows.length} rows`);
-
-        // ---- Нормализация заголовков ----
-        const normalize = (s: string) =>
-            s
-                .toLowerCase()
-                .replace(/\s+/g, "")
-                .replace(/[^\p{L}\p{N}]/gu, "")
-                .trim();
-
-        // ---- Маппинг ключевых колонок ----
-        const headerMap: Record<string, string> = {
-            // SKU
-            "артикулwb": "sku",
-            "артикулпродавца": "sku",
-            "артикул": "sku",
-            "название": "name",
-            "бренд": "brand",
-
-            // Views
-            "показы": "views",
-            "просмотры": "views",
-            "показов": "views",
-
-            // Clicks
-            "клики": "clicks",
-            "переходы": "clicks",
-            "переходывкарточку": "clicks",
-            "кликов": "clicks",
-
-            // Cart
-            "вкорзину": "cart",
-            "положиливкорзину": "cart",
-            "корзина": "cart",
-            "суммаклз": "cart",  // Сумма Клз from new format
-
-            // Orders - different variations
-            "заказы": "orders",
-            "заказали": "orders",
-            "заказалишт": "orders",
-            "заказовшт": "orders",
-            "заказов": "orders",
-            "суммазак": "orders",  // Сумма Зак from new format
-
-            // CTR & CR
-            "ctr": "ctr",
-            "crвкорзину": "cr_cart",
-            "конверсиявкорзину": "cr_cart",
-            "crвкорзи": "cr_cart",
-            "crкорзина": "cr_cart",
-            "crвзаказ": "cr_order",
-            "конверсиявзаказ": "cr_order",
-            "crзаказ": "cr_order",
-            "cr0": "cr_order",
-
-            // Price
-            "средняяцена": "avg_price",
-            "средняяцена₽": "avg_price",
-            "ценаруб": "avg_price",
-            "цена": "avg_price",
-
-            // Revenue
-            "выручка": "revenue",
-            "заказалинасумму": "revenue",
-            "заказалинасумму₽": "revenue",
-            "выручкак": "revenue",
-
-            // Stock
-            "остатки": "stock_units",
-            "остаткискладвб": "stock_units",
-            "остаткискладвбшт": "stock_units",
-            "остаткисклад": "stock_units",
-            "остаткискладwb": "stock_units",
-            "остаткискладwbшт": "stock_units",
-            "остаткишт": "stock_units",
-            "сток": "stock_units",
-
-            // DRR - different variations
-            "drrпоиск": "drr_search",
-            "drrпоиска": "drr_search",
-            "drrмедиа": "drr_media",
-            "drrблогеры": "drr_bloggers",
-            "drростальное": "drr_other",
-            "drrдругое": "drr_other",
-            "drr": "drr_search",
-        };
-
-        // DEBUG: Log normalized headers and their mappings
-        if (jsonRows.length > 0) {
-            const row = jsonRows[0];
-            const debugMapping: Record<string, { normalized: string; mapped: string | null }> = {};
-            for (const col of Object.keys(row)) {
-                const normalized = normalize(col);
-                const mapped = headerMap[normalized] || null;
-                if (col.toLowerCase().includes("остатки")) {
-                    debugMapping[col] = { normalized, mapped };
-                }
-            }
-            console.log("Stock column debug:", JSON.stringify(debugMapping));
-        }
-
-        // ---- Преобразуем строки ----
-        const finalData = jsonRows
-            .map((row) => {
-                const clean = Object.entries(row).reduce(
-                    (acc: any, [col, value]) => {
-                        const key = normalize(col);
-                        const mapped = headerMap[key];
-                        if (mapped) acc[mapped] = value;
-                        return acc;
-                    },
-                    {}
-                );
-
-                if (!clean.sku) return null;
-                return clean;
+                return out.sku ? out : null;
             })
             .filter(Boolean);
 
-        console.log(`Valid rows with SKU: ${finalData.length}`);
-
-        if (finalData.length === 0) {
-            return new Response(
-                JSON.stringify({
-                    error: "No valid rows found. Check column names.",
-                    parsedRows: jsonRows.length,
-                    sheetNames: sheetNames,
-                    sampleHeaders: jsonRows[0] ? Object.keys(jsonRows[0]).slice(0, 10) : []
-                }),
-                { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-            );
+        console.log("Mapped rows:", rows.length);
+        if (rows.length > 0) {
+            console.log("Sample row:", rows[0]);
         }
 
-        // ---- Delete old data ----
-        await supabase.from("wb_funnel").delete().neq("id", "00000000-0000-0000-0000-000000000000");
+        // Delete old data
+        await supabase.from("wb_funnel").delete().neq("sku", "");
 
-        // ---- Batch insert ----
-        const chunk = 300;
-        let insertedCount = 0;
+        // Insert new data in batches
+        const BATCH_SIZE = 500;
+        let inserted = 0;
 
-        for (let i = 0; i < finalData.length; i += chunk) {
-            const slice = finalData.slice(i, i + chunk);
-            const { error } = await supabase.from("wb_funnel").insert(slice);
-            if (error) {
-                console.error("Insert error:", error);
-                throw error;
-            }
-            insertedCount += slice.length;
-        }
-        // Create stock debug info
-        let stockDebug: Record<string, { normalized: string; mapped: string | null }> = {};
-        if (jsonRows.length > 0) {
-            for (const col of Object.keys(jsonRows[0])) {
-                if (col.toLowerCase().includes("остатки")) {
-                    stockDebug[col] = {
-                        normalized: normalize(col),
-                        mapped: headerMap[normalize(col)] || null
-                    };
-                }
+        for (let i = 0; i < rows.length; i += BATCH_SIZE) {
+            const batch = rows.slice(i, i + BATCH_SIZE);
+            const { error: insertError } = await supabase.from("wb_funnel").insert(batch);
+            if (insertError) {
+                console.error("Insert error:", insertError);
+            } else {
+                inserted += batch.length;
             }
         }
 
         return new Response(
             JSON.stringify({
                 success: true,
-                inserted: insertedCount,
-                parsed: jsonRows.length,
-                stockDebug: stockDebug,
-                sampleRow: finalData[0] || null
+                totalRows: raw.length,
+                mappedRows: rows.length,
+                insertedRows: inserted,
+                sampleRow: rows[0] || null,
             }),
-            { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+            { headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
 
-    } catch (e) {
+    } catch (e: any) {
         console.error("Error:", e);
         return new Response(
-            JSON.stringify({ error: e.toString() }),
+            JSON.stringify({ error: e.message || String(e) }),
             { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
     }
