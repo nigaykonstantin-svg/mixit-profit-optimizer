@@ -2,26 +2,7 @@
 // ELASTICITY CONFIG
 // ================================
 
-export const ELASTICITY_CONFIG = {
-    // Minimum data requirements
-    minDaysForElasticity: 14,      // min days of data per SKU
-    minOrdersForAnalysis: 10,      // min orders per SKU
-
-    // Rolling window
-    rollingWindowDays: 30,
-
-    // Price change detection threshold
-    minPriceChangePct: 0.02,       // 2% change to be considered
-
-    // Elasticity thresholds
-    elasticity: {
-        highlyElastic: -1.5,       // very sensitive
-        elastic: -1,               // normal sensitivity
-        inelastic: -0.3,           // low sensitivity
-        giffen: 0,                 // positive = raise price OK
-    },
-
-    // Dates to exclude (promotions, anomalies)
+export const CONFIG = {
     excludeDates: [
         '2024-11-26',
         '2024-11-27',
@@ -30,8 +11,11 @@ export const ELASTICITY_CONFIG = {
         '2024-11-30',
     ],
 
-    // SKUs to exclude from analysis
-    excludeSkus: [] as string[],
+    minDaysPriceConstant: 2,
+    minOrders: 50,
+
+    priceBuckets: [-0.1, -0.05, 0, 0.03, 0.05],
+    adBuckets: [0, 0.5, 1, 1.2],
 };
 
-export type ElasticityConfig = typeof ELASTICITY_CONFIG;
+export const EXCLUDED_DATES = new Set(CONFIG.excludeDates);
