@@ -86,11 +86,10 @@ serve(async (req) => {
             sheetNames = workbook.SheetNames;
             console.log("Available sheets:", sheetNames);
 
-            // WB Funnel export: 4th sheet (index 3) contains "Товары"
-            const sheetIndex = Math.min(3, sheetNames.length - 1);
-            const sheetName = sheetNames[sheetIndex];
+            // NEW FORMAT: Single sheet Excel - always use first sheet (index 0)
+            const sheetName = sheetNames[0];
 
-            console.log(`Using sheet [${sheetIndex}]: ${sheetName}`);
+            console.log(`Using first sheet: ${sheetName}`);
             const sheet = workbook.Sheets[sheetName];
 
             // Parse with range option to skip potential header rows

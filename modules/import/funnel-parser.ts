@@ -116,11 +116,10 @@ export function parseFunnelSheet(fileBuffer: Buffer): FunnelRow[] {
 
     console.log('Available sheets:', workbook.SheetNames);
 
-    // WB Funnel export: 4th sheet (index 3) contains "Товары"
-    const sheetIndex = Math.min(3, workbook.SheetNames.length - 1);
-    const sheetName = workbook.SheetNames[sheetIndex];
+    // NEW FORMAT: Single sheet Excel - always use first sheet (index 0)
+    const sheetName = workbook.SheetNames[0];
 
-    console.log(`Using sheet [${sheetIndex}]: ${sheetName}`);
+    console.log(`Using first sheet: ${sheetName}`);
 
     const sheet = workbook.Sheets[sheetName];
 
