@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getSupabaseClient, isSupabaseConfigured } from '@/analytics-engine/supabase/supabase-client';
-import { analyzeFunnel } from '@/modules/analytics/funnel-metrics';
+import { analyzeFunnelWithCatalog } from '@/modules/analytics/funnel-metrics';
 import { FunnelRow } from '@/modules/import/funnel-parser';
 import { setCategoryConfigCache } from '@/modules/pricing/price-config';
 import { getCategoryConfigs } from '@/modules/config';
@@ -19,6 +19,16 @@ export async function GET() {
     }
 
     const supabase = getSupabaseClient();
+
+    // Load SKU catalog for category mapping
+    const { data: catalogData } = await supabase
+        .from('sku_catalog')
+        .select('sku, category, subcategory');
+
+    const skuCatalog = new Map<string, { category: string; subcategory?: string }>();
+    (catalogData || []).forEach(row => {
+        skuCatalog.set(row.sku, { category: row.category, subcategory: row.subcategory });
+    });
 
     const { data, error } = await supabase
         .from('wb_funnel')
@@ -52,8 +62,8 @@ export async function GET() {
         kp_pct: row.kp_pct || 0,
     }));
 
-    // Apply analyzeFunnel with fresh configs to recalculate recommendations
-    const analyzed = analyzeFunnel(funnelRows);
+    // Apply analyzeFunnel with SKU catalog for category lookups
+    const analyzed = analyzeFunnelWithCatalog(funnelRows, skuCatalog);
 
     return NextResponse.json({ rows: analyzed });
 }

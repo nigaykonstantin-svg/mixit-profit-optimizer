@@ -56,6 +56,45 @@ export default function FunnelPage() {
     const [taskAssignee, setTaskAssignee] = useState('');
     const [taskNote, setTaskNote] = useState('');
 
+    // Column visibility state
+    const [showColumnSelector, setShowColumnSelector] = useState(false);
+    const [visibleColumns, setVisibleColumns] = useState<Set<string>>(new Set([
+        'sku', 'revenue', 'views', 'orders', 'ctr', 'cr_order', 'kp_pct',
+        'drr_search', 'drr_media', 'drr_bloggers', 'stock', 'price_action', 'new_price', 'reason', 'ads_action', 'category'
+    ]));
+
+    const allColumns = [
+        { id: 'sku', label: 'SKU', group: 'Основное' },
+        { id: 'revenue', label: 'Выручка', group: 'Основное' },
+        { id: 'views', label: 'Просмотры', group: 'Воронка' },
+        { id: 'orders', label: 'Заказы', group: 'Воронка' },
+        { id: 'ctr', label: 'CTR', group: 'Конверсия' },
+        { id: 'cr_order', label: 'CR', group: 'Конверсия' },
+        { id: 'kp_pct', label: 'КП%', group: 'Прибыль' },
+        { id: 'drr_search', label: 'DRR Поиск', group: 'Реклама' },
+        { id: 'drr_media', label: 'DRR Медиа', group: 'Реклама' },
+        { id: 'drr_bloggers', label: 'DRR Блогеры', group: 'Реклама' },
+        { id: 'drr_other', label: 'DRR Другое', group: 'Реклама' },
+        { id: 'stock', label: 'Сток', group: 'Основное' },
+        { id: 'price_action', label: 'Реком.', group: 'Действия' },
+        { id: 'new_price', label: 'Новая цена', group: 'Действия' },
+        { id: 'reason', label: 'Причина', group: 'Действия' },
+        { id: 'ads_action', label: 'Реклама', group: 'Действия' },
+        { id: 'category', label: 'Категория', group: 'Основное' },
+        { id: 'avg_price', label: 'Ср. цена', group: 'Цены' },
+        { id: 'client_price', label: 'Цена клиента', group: 'Цены' },
+    ];
+
+    const toggleColumn = (colId: string) => {
+        const newSet = new Set(visibleColumns);
+        if (newSet.has(colId)) {
+            newSet.delete(colId);
+        } else {
+            newSet.add(colId);
+        }
+        setVisibleColumns(newSet);
+    };
+
     // Fetch data from API
     const fetchData = async () => {
         setLoading(true);
@@ -343,15 +382,56 @@ export default function FunnelPage() {
                             ))}
                         </div>
                     </div>
-                    <div className="relative w-full md:w-64">
-                        <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-                        <Input
-                            type="text"
-                            placeholder="Поиск по SKU..."
-                            value={search}
-                            onChange={(e) => setSearch(e.target.value)}
-                            className="pl-10"
-                        />
+                    <div className="flex items-center gap-2">
+                        <div className="relative w-full md:w-64">
+                            <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                            <Input
+                                type="text"
+                                placeholder="Поиск по SKU..."
+                                value={search}
+                                onChange={(e) => setSearch(e.target.value)}
+                                className="pl-10"
+                            />
+                        </div>
+                        <div className="relative">
+                            <button
+                                onClick={() => setShowColumnSelector(!showColumnSelector)}
+                                className="flex items-center gap-2 px-3 py-2 bg-white border border-gray-200 rounded-lg text-sm hover:bg-gray-50 transition-all"
+                            >
+                                <Filter size={16} />
+                                Колонки
+                            </button>
+                            {showColumnSelector && (
+                                <div className="absolute right-0 top-full mt-2 w-72 bg-white border border-gray-200 rounded-xl shadow-lg z-50 p-4">
+                                    <div className="flex items-center justify-between mb-3">
+                                        <span className="font-medium text-gray-900">Выбрать колонки</span>
+                                        <button onClick={() => setShowColumnSelector(false)} className="text-gray-400 hover:text-gray-600">
+                                            <X size={16} />
+                                        </button>
+                                    </div>
+                                    <div className="max-h-80 overflow-y-auto space-y-3">
+                                        {['Основное', 'Воронка', 'Конверсия', 'Прибыль', 'Реклама', 'Цены', 'Действия'].map(group => (
+                                            <div key={group}>
+                                                <div className="text-xs text-gray-500 font-medium mb-1">{group}</div>
+                                                <div className="space-y-1">
+                                                    {allColumns.filter(c => c.group === group).map(col => (
+                                                        <label key={col.id} className="flex items-center gap-2 cursor-pointer hover:bg-gray-50 p-1 rounded">
+                                                            <input
+                                                                type="checkbox"
+                                                                checked={visibleColumns.has(col.id)}
+                                                                onChange={() => toggleColumn(col.id)}
+                                                                className="rounded border-gray-300"
+                                                            />
+                                                            <span className="text-sm text-gray-700">{col.label}</span>
+                                                        </label>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+                        </div>
                     </div>
                 </div>
 

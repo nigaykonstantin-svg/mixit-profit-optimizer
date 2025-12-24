@@ -431,3 +431,94 @@ export function analyzeFunnel(data: FunnelRow[]): AnalyzedFunnelRow[] {
     });
 }
 
+/**
+ * Analyze funnel data with externally provided SKU catalog (for server-side use)
+ */
+export function analyzeFunnelWithCatalog(
+    data: FunnelRow[],
+    skuCatalog: Map<string, { category: string; subcategory?: string }>
+): AnalyzedFunnelRow[] {
+    return data.map(row => {
+        const revenue_per_view =
+            row.views > 0 ? row.revenue / row.views : 0;
+
+        const cpc =
+            row.clicks > 0 ? row.revenue / row.clicks : 0;
+
+        const conversion_quality: 'Overpriced' | 'Low stock' | 'Normal' =
+            row.ctr > 2 && row.cr_order < 1.5 ? "Overpriced" :
+                row.stock_units < 10 ? "Low stock" :
+                    "Normal";
+
+        const total_drr =
+            (row.drr_search || 0) +
+            (row.drr_media || 0) +
+            (row.drr_bloggers || 0) +
+            (row.drr_other || 0);
+
+        // Get category from provided catalog
+        const catalogEntry = skuCatalog.get(row.sku);
+
+        // Price Engine V1 with category from catalog
+        const rec = priceEngineV1({
+            sku: row.sku,
+            clicks_7d: row.clicks ?? 0,
+            orders_7d: row.orders ?? 0,
+            ctr_pct: row.ctr ?? 0,
+            cr_order_pct: row.cr_order ?? 0,
+            avg_price: row.avg_price ?? 0,
+            client_price: row.client_price ?? undefined,
+            stock_units: row.stock_units ?? 0,
+            drr_search: row.drr_search ?? 0,
+            drr_media: row.drr_media ?? 0,
+            drr_bloggers: row.drr_bloggers ?? 0,
+            total_drr: total_drr,
+            category: catalogEntry?.category as 'face' | 'hair' | 'body' | 'decor' | undefined,
+        });
+
+        return {
+            sku: row.sku,
+            category: catalogEntry?.category,
+            subcategory: catalogEntry?.subcategory,
+            revenue: row.revenue,
+            views: row.views,
+            clicks: row.clicks,
+            orders: row.orders,
+            ctr: row.ctr,
+            cr_order: row.cr_order,
+
+            revenue_per_view,
+            cpc,
+            conversion_quality,
+
+            stock: row.stock_units,
+            price: row.avg_price,
+            kp_pct: row.kp_pct || 0,
+
+            // DRR breakdown
+            drr_search: row.drr_search || 0,
+            drr_media: row.drr_media || 0,
+            drr_bloggers: row.drr_bloggers || 0,
+            total_drr,
+
+            // Price recommendations
+            price_action: rec.price_action,
+            price_step_pct: rec.price_step_pct,
+            recommended_price: rec.recommended_price,
+            reason_code: rec.reason_code,
+            reason_text: rec.reason_text || getReasonText(rec.reason_code),
+            next_review_date: rec.next_review_date,
+
+            // Ads recommendations
+            ads_action: rec.ads_action,
+            ads_change_pct: rec.ads_change_pct,
+            ads_search: rec.ads_search,
+            ads_media: rec.ads_media,
+            ads_bloggers: rec.ads_bloggers,
+
+            // Traceability
+            blocked_actions: rec.blocked_actions,
+        };
+    });
+}
+
