@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { getCurrentUser, AuthUser } from '@/modules/auth';
 import { USER_ROLES, getExecutors } from '@/modules/users';
@@ -37,7 +37,7 @@ type SortDir = 'asc' | 'desc';
 
 const PAGE_SIZE = 100;
 
-export default function FunnelPage() {
+function FunnelPageContent() {
     const router = useRouter();
     const searchParams = useSearchParams();
     const [user, setUser] = useState<AuthUser | null>(null);
@@ -718,5 +718,20 @@ export default function FunnelPage() {
                 </div>
             )}
         </div>
+    );
+}
+
+export default function FunnelPage() {
+    return (
+        <Suspense fallback={
+            <div className="min-h-screen bg-gradient-to-br from-violet-50 via-white to-purple-50 flex items-center justify-center">
+                <div className="flex items-center gap-3 text-gray-600">
+                    <Loader2 className="animate-spin" size={24} />
+                    <span>Загрузка воронки...</span>
+                </div>
+            </div>
+        }>
+            <FunnelPageContent />
+        </Suspense>
     );
 }
