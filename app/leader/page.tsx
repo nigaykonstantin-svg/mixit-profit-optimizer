@@ -113,7 +113,112 @@ export default function LeaderDashboard() {
             </header>
 
             <main className="max-w-6xl mx-auto px-4 py-6 space-y-6">
-                {/* Stats */}
+                {/* Category Tabs */}
+                <div className="bg-white rounded-2xl p-1 shadow-sm border border-gray-100 flex gap-1">
+                    {[
+                        { id: 'face', name: 'Лицо', icon: '🧴', revenue: '45.2M', orders: 38420, alerts: 5 },
+                        { id: 'hair', name: 'Волосы', icon: '💇', revenue: '38.1M', orders: 32150, alerts: 3 },
+                        { id: 'body', name: 'Тело', icon: '🧴', revenue: '42.8M', orders: 41200, alerts: 2 },
+                        { id: 'decor', name: 'Декор', icon: '💄', revenue: '32.6M', orders: 43014, alerts: 2 },
+                    ].map((cat, i) => (
+                        <button
+                            key={cat.id}
+                            className={`flex-1 py-3 px-4 rounded-xl transition-all ${i === 0
+                                ? 'bg-gradient-to-r from-purple-600 to-indigo-600 text-white shadow-lg'
+                                : 'text-gray-600 hover:bg-gray-50'
+                                }`}
+                        >
+                            <div className="flex items-center justify-center gap-2">
+                                <span className="text-xl">{cat.icon}</span>
+                                <span className="font-medium">{cat.name}</span>
+                            </div>
+                            <div className={`text-sm mt-1 ${i === 0 ? 'text-purple-200' : 'text-gray-400'}`}>
+                                {cat.revenue} ₽ • {cat.orders.toLocaleString()} заказов
+                            </div>
+                        </button>
+                    ))}
+                </div>
+
+                {/* Category Stats */}
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
+                        <div className="text-3xl font-bold text-gray-900">45.2M ₽</div>
+                        <div className="text-sm text-gray-500 mt-1">Выручка категории</div>
+                        <div className="text-xs text-green-600 mt-2">+12% к прош. периоду</div>
+                    </div>
+                    <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
+                        <div className="text-3xl font-bold text-gray-900">0.42%</div>
+                        <div className="text-sm text-gray-500 mt-1">Средний CR</div>
+                        <div className="text-xs text-orange-600 mt-2">−0.05% к прош. периоду</div>
+                    </div>
+                    <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
+                        <div className="text-3xl font-bold text-red-600">23</div>
+                        <div className="text-sm text-gray-500 mt-1">Мало стока</div>
+                        <div className="text-xs text-gray-400 mt-2">SKU с остатком &lt;20</div>
+                    </div>
+                    <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
+                        <div className="text-3xl font-bold text-orange-600">18</div>
+                        <div className="text-sm text-gray-500 mt-1">Нужно снизить цену</div>
+                        <div className="text-xs text-gray-400 mt-2">Низкий CR при высоком CTR</div>
+                    </div>
+                </div>
+
+                {/* Action Cards */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="bg-red-50 border border-red-100 rounded-2xl p-4">
+                        <div className="flex items-center gap-2 mb-3">
+                            <div className="w-2 h-2 bg-red-500 rounded-full"></div>
+                            <span className="font-medium text-red-900">Критично</span>
+                            <span className="text-sm text-red-600 ml-auto">3 SKU</span>
+                        </div>
+                        <div className="space-y-2 text-sm">
+                            <div className="flex justify-between text-red-800">
+                                <span>SKU00875900</span>
+                                <span>сток 12</span>
+                            </div>
+                            <div className="flex justify-between text-red-800">
+                                <span>SKU00834500</span>
+                                <span>CR 0.25%</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div className="bg-yellow-50 border border-yellow-100 rounded-2xl p-4">
+                        <div className="flex items-center gap-2 mb-3">
+                            <div className="w-2 h-2 bg-yellow-500 rounded-full"></div>
+                            <span className="font-medium text-yellow-900">Требует внимания</span>
+                            <span className="text-sm text-yellow-600 ml-auto">12 SKU</span>
+                        </div>
+                        <div className="space-y-2 text-sm">
+                            <div className="flex justify-between text-yellow-800">
+                                <span>SKU00677600</span>
+                                <span>↓ цену −5%</span>
+                            </div>
+                            <div className="flex justify-between text-yellow-800">
+                                <span>SKU00890000</span>
+                                <span>DRR 8.2%</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div className="bg-green-50 border border-green-100 rounded-2xl p-4">
+                        <div className="flex items-center gap-2 mb-3">
+                            <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                            <span className="font-medium text-green-900">Рекомендации</span>
+                            <span className="text-sm text-green-600 ml-auto">45 SKU</span>
+                        </div>
+                        <div className="space-y-2 text-sm">
+                            <div className="flex justify-between text-green-800">
+                                <span>SKU00444700</span>
+                                <span>можно ↑ +3%</span>
+                            </div>
+                            <div className="flex justify-between text-green-800">
+                                <span>SKU00830200</span>
+                                <span>можно ↑ +5%</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Task Stats */}
                 <div className="grid grid-cols-3 gap-4">
                     <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
                         <div className="flex items-center gap-3">
