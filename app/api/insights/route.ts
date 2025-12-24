@@ -62,6 +62,9 @@ export async function GET(request: NextRequest) {
             category
         );
 
+        // Save to Supabase for historical analysis
+        const savedRecord = await saveInsight(role, insights, categories, dashboardData.totals, category);
+
         const roleInfo = INSIGHT_ROLES.find(r => r.id === role);
 
         return NextResponse.json({
@@ -69,6 +72,7 @@ export async function GET(request: NextRequest) {
             role: roleInfo,
             category: category || null,
             generatedAt: new Date().toISOString(),
+            recordId: savedRecord?.id || null,
         }, {
             headers: {
                 'Cache-Control': 'no-store, no-cache, must-revalidate',
