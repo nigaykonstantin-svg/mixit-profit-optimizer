@@ -427,6 +427,7 @@ export default function FunnelPage() {
                                     <th className="text-right py-3 px-2 font-medium text-gray-600 cursor-pointer hover:text-gray-900" onClick={() => handleSort('cr_order')}>
                                         <div className="flex items-center justify-end gap-1">CR {getSortIcon('cr_order')}</div>
                                     </th>
+                                    <th className="text-right py-3 px-2 font-medium text-gray-600">КП%</th>
                                     <th className="text-right py-3 px-2 font-medium text-gray-600">DRR Поиск</th>
                                     <th className="text-right py-3 px-2 font-medium text-gray-600">DRR Медиа</th>
                                     <th className="text-right py-3 px-2 font-medium text-gray-600">DRR Блогеры</th>
@@ -457,6 +458,11 @@ export default function FunnelPage() {
                                         </td>
                                         <td className="py-3 px-2 text-right">
                                             <span className={row.cr_order < 1 ? 'text-orange-600' : 'text-gray-600'}>{row.cr_order.toFixed(2)}%</span>
+                                        </td>
+                                        <td className="py-3 px-2 text-right">
+                                            <span className={row.kp_pct > 0.25 ? 'text-green-600 font-medium' : row.kp_pct < 0.15 ? 'text-red-600 font-medium' : 'text-gray-600'}>
+                                                {(row.kp_pct * 100).toFixed(1)}%
+                                            </span>
                                         </td>
                                         <td className="py-3 px-2 text-right">
                                             <span className={row.drr_search > 0.2 ? 'text-red-600 font-medium' : 'text-gray-600'}>{(row.drr_search * 100).toFixed(1)}%</span>

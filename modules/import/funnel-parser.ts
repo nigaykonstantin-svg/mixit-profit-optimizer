@@ -29,6 +29,8 @@ export interface FunnelRow {
     drr_media: number;
     drr_bloggers: number;
     drr_other: number;
+
+    kp_pct: number;           // Коммерческая прибыль %
 }
 
 /* ============================
@@ -83,6 +85,9 @@ const HEADER_MAP: Record<string, keyof FunnelRow> = {
     "drrмедиа": "drr_media",
     "drrблогеры": "drr_bloggers",
     "drростальное": "drr_other",
+
+    // KP (Commercial Profit)
+    "кп": "kp_pct",
 };
 
 /* ============================

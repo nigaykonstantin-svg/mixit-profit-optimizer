@@ -309,6 +309,7 @@ export interface AnalyzedFunnelRow {
     conversion_quality: 'Overpriced' | 'Low stock' | 'Normal';
     stock: number;
     price: number;
+    kp_pct: number;  // Commercial Profit %
 
     // DRR breakdown
     drr_search: number;
@@ -401,6 +402,7 @@ export function analyzeFunnel(data: FunnelRow[]): AnalyzedFunnelRow[] {
 
             stock: row.stock_units,
             price: row.avg_price,
+            kp_pct: row.kp_pct || 0,
 
             // DRR breakdown
             drr_search: row.drr_search || 0,
