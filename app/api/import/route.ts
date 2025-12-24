@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { parseExcelFile, parseWbFile, importToFact2026, saveFunnelToDb, ImportType } from '@/modules/import';
 import { parseFunnelSheet } from '@/modules/import/funnel-parser';
 import { analyzeFunnel } from '@/modules/analytics/funnel-metrics';
+import { upsertSkuCatalog, SkuCatalogEntry } from '@/modules/import/sku-catalog';
 
 export async function POST(request: NextRequest) {
     try {
@@ -55,6 +56,26 @@ export async function POST(request: NextRequest) {
                 });
             }
 
+            // Auto-sync categories to sku_catalog if category column exists
+            const rowsWithCategory = rows.filter(r => r.category && r.category.trim());
+            if (rowsWithCategory.length > 0) {
+                console.log(`Found ${rowsWithCategory.length} rows with category data, syncing to sku_catalog...`);
+
+                const catalogEntries: SkuCatalogEntry[] = rowsWithCategory.map(r => ({
+                    sku: r.sku,
+                    category: r.category!,
+                    name: r.name || undefined,
+                }));
+
+                try {
+                    const syncResult = await upsertSkuCatalog(catalogEntries);
+                    console.log(`Synced ${syncResult.count} categories to sku_catalog`);
+                } catch (syncError) {
+                    console.error('Failed to sync categories:', syncError);
+                    // Don't fail the whole import, just log the error
+                }
+            }
+
             // Return analyzed data
             const analyzed = analyzeFunnel(rows);
 
@@ -63,6 +84,7 @@ export async function POST(request: NextRequest) {
                 rows: analyzed,
                 recordsProcessed: rows.length,
                 recordsImported: rows.length,
+                categoriesSynced: rowsWithCategory.length,
             });
         }
 

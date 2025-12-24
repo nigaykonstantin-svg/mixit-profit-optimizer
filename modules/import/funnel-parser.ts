@@ -6,6 +6,8 @@ import * as xlsx from "xlsx";
 
 export interface FunnelRow {
     sku: string;
+    category?: string;        // Категория товара
+    name?: string;            // Название товара
 
     views: number;
     clicks: number;
@@ -52,6 +54,14 @@ const HEADER_MAP: Record<string, keyof FunnelRow> = {
     // SKU
     "артикул": "sku",
     "артикулwb": "sku",
+
+    // CATEGORY & NAME
+    "категория": "category",
+    "предмет": "category",
+    "товарнаягруппа": "category",
+    "название": "name",
+    "наименование": "name",
+    "товар": "name",
 
     // FUNNEL
     "суммапоказы": "views",
@@ -164,7 +174,7 @@ export function parseFunnelSheet(fileBuffer: Buffer): FunnelRow[] {
 
                 const val = row[col];
 
-                if (key === "sku") {
+                if (key === "sku" || key === "category" || key === "name") {
                     out[key] = String(val || "").trim();
                 } else {
                     const num = Number(
