@@ -13,7 +13,7 @@ export async function GET() {
     const { data: catalogCategories, error: catalogError } = await supabase
         .from('sku_catalog')
         .select('category')
-        .limit(1000);
+        .limit(3000);
 
     // Count by category
     const catCounts: Record<string, number> = {};
