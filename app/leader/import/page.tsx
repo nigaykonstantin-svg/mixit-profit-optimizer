@@ -5,7 +5,9 @@ import { useRouter } from 'next/navigation';
 import { getCurrentUser, AuthUser } from '@/modules/auth';
 import { USER_ROLES } from '@/modules/users';
 import { Card, Button } from '@/modules/shared';
-import { Upload, FileSpreadsheet, Check, AlertCircle, ArrowLeft, Loader2 } from 'lucide-react';
+import { Upload, FileSpreadsheet, Check, AlertCircle, ArrowLeft, Loader2, Database, Trash2 } from 'lucide-react';
+import { saveSkuCatalog, parseCatalogData, getCatalogStats, clearSkuCatalog } from '@/modules/import/sku-catalog';
+import * as XLSX from 'xlsx';
 
 const IMPORT_TYPES = [
     { id: 'wb_funnel', label: 'WB Funnel', description: 'Полная воронка (4-я вкладка)' },
@@ -28,6 +30,7 @@ interface ImportResult {
 export default function ImportPage() {
     const router = useRouter();
     const fileInputRef = useRef<HTMLInputElement>(null);
+    const catalogInputRef = useRef<HTMLInputElement>(null);
     const [user, setUser] = useState<AuthUser | null>(null);
     const [mounted, setMounted] = useState(false);
 
@@ -35,6 +38,17 @@ export default function ImportPage() {
     const [selectedFile, setSelectedFile] = useState<File | null>(null);
     const [importing, setImporting] = useState(false);
     const [result, setResult] = useState<ImportResult | null>(null);
+
+    // Catalog state
+    const [catalogStats, setCatalogStats] = useState<{ total: number; categories: string[] }>({ total: 0, categories: [] });
+    const [catalogImporting, setCatalogImporting] = useState(false);
+    const [catalogResult, setCatalogResult] = useState<{ success: boolean; count?: number; error?: string } | null>(null);
+
+    const refreshCatalogStats = () => {
+        if (typeof window !== 'undefined') {
+            setCatalogStats(getCatalogStats());
+        }
+    };
 
     useEffect(() => {
         setMounted(true);
@@ -44,6 +58,7 @@ export default function ImportPage() {
             return;
         }
         setUser(currentUser);
+        refreshCatalogStats();
     }, [router]);
 
     const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -51,6 +66,46 @@ export default function ImportPage() {
         if (file) {
             setSelectedFile(file);
             setResult(null);
+        }
+    };
+
+    const handleCatalogUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        setCatalogImporting(true);
+        setCatalogResult(null);
+
+        try {
+            const buffer = await file.arrayBuffer();
+            const workbook = XLSX.read(buffer, { type: 'array' });
+            const sheetName = workbook.SheetNames[0];
+            const sheet = workbook.Sheets[sheetName];
+            const data = XLSX.utils.sheet_to_json(sheet) as Record<string, unknown>[];
+
+            const entries = parseCatalogData(data);
+            if (entries.length === 0) {
+                setCatalogResult({ success: false, error: 'Не найдены колонки sku и category' });
+            } else {
+                saveSkuCatalog(entries);
+                refreshCatalogStats();
+                setCatalogResult({ success: true, count: entries.length });
+            }
+        } catch (error) {
+            setCatalogResult({ success: false, error: String(error) });
+        } finally {
+            setCatalogImporting(false);
+            if (catalogInputRef.current) {
+                catalogInputRef.current.value = '';
+            }
+        }
+    };
+
+    const handleClearCatalog = () => {
+        if (confirm('Очистить справочник SKU?')) {
+            clearSkuCatalog();
+            refreshCatalogStats();
+            setCatalogResult(null);
         }
     };
 
@@ -230,6 +285,86 @@ export default function ImportPage() {
                         </div>
                     </Card>
                 )}
+
+                {/* SKU Catalog */}
+                <Card>
+                    <div className="flex items-center justify-between mb-4">
+                        <div className="flex items-center gap-3">
+                            <Database className="text-purple-600" size={20} />
+                            <div>
+                                <h2 className="font-semibold text-gray-900">Справочник SKU</h2>
+                                <p className="text-xs text-gray-500">Категории и подкатегории товаров</p>
+                            </div>
+                        </div>
+                        {catalogStats.total > 0 && (
+                            <div className="text-sm text-gray-600">
+                                {catalogStats.total} SKU • {catalogStats.categories.length} категорий
+                            </div>
+                        )}
+                    </div>
+
+                    <div className="flex gap-3">
+                        <label className="flex-1">
+                            <input
+                                ref={catalogInputRef}
+                                type="file"
+                                accept=".xlsx,.xls,.csv"
+                                onChange={handleCatalogUpload}
+                                className="hidden"
+                            />
+                            <div className="border-2 border-dashed border-gray-300 rounded-xl p-4 text-center cursor-pointer hover:border-purple-400 hover:bg-purple-50 transition-all">
+                                {catalogImporting ? (
+                                    <div className="flex items-center justify-center gap-2 text-gray-600">
+                                        <Loader2 className="animate-spin" size={18} />
+                                        Загрузка...
+                                    </div>
+                                ) : (
+                                    <>
+                                        <Upload className="mx-auto text-gray-400 mb-2" size={20} />
+                                        <div className="text-sm text-gray-600">Загрузить справочник</div>
+                                        <div className="text-xs text-gray-400 mt-1">Excel с колонками: sku, category, subcategory</div>
+                                    </>
+                                )}
+                            </div>
+                        </label>
+
+                        {catalogStats.total > 0 && (
+                            <button
+                                onClick={handleClearCatalog}
+                                className="px-4 py-2 text-red-600 hover:bg-red-50 rounded-xl transition-all flex items-center gap-2"
+                            >
+                                <Trash2 size={16} />
+                                Очистить
+                            </button>
+                        )}
+                    </div>
+
+                    {catalogResult && (
+                        <div className={`mt-3 p-3 rounded-lg text-sm ${catalogResult.success ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'}`}>
+                            {catalogResult.success ? (
+                                <div className="flex items-center gap-2">
+                                    <Check size={16} />
+                                    Загружено {catalogResult.count} SKU
+                                </div>
+                            ) : (
+                                <div className="flex items-center gap-2">
+                                    <AlertCircle size={16} />
+                                    {catalogResult.error}
+                                </div>
+                            )}
+                        </div>
+                    )}
+
+                    {catalogStats.categories.length > 0 && (
+                        <div className="mt-3 flex flex-wrap gap-2">
+                            {catalogStats.categories.map(cat => (
+                                <span key={cat} className="px-2 py-1 bg-purple-100 text-purple-700 rounded-full text-xs">
+                                    {cat}
+                                </span>
+                            ))}
+                        </div>
+                    )}
+                </Card>
 
                 {/* Column Mapping Info */}
                 <Card>
