@@ -73,18 +73,83 @@ export const OPTIMIZER_CONFIG: OptimizerConfig = {
     },
 };
 
-// Helper to get category config with fallback
-export function getCategoryConfig(category?: string) {
-    if (category && category in OPTIMIZER_CONFIG.categories) {
-        return OPTIMIZER_CONFIG.categories[category];
+// ============================================
+// DYNAMIC CATEGORY CONFIG CACHE
+// ============================================
+
+import { CategoryConfig } from '@/analytics-engine/wb/wb-config-loader';
+
+// Cache for category configs (loaded from Supabase via API)
+let categoryConfigCache: Map<string, CategoryConfig> = new Map();
+let cacheInitialized = false;
+
+// Default fallback config
+const DEFAULT_CONFIG: CategoryConfig = {
+    category: 'DEFAULT',
+    min_margin_pct: 25,
+    ctr_warning: 2.5,
+    cr_order_warning: 3.0,
+    price_step_pct: 3,
+    drr_warning: 20,
+    stock_critical_days: 10,
+    stock_overstock_days: 120,
+};
+
+// Initialize cache (call this on app load)
+export async function initializeCategoryConfigCache(): Promise<void> {
+    try {
+        const response = await fetch('/api/config/categories');
+        if (!response.ok) throw new Error('Failed to fetch configs');
+        const configs: CategoryConfig[] = await response.json();
+
+        categoryConfigCache.clear();
+        configs.forEach(c => {
+            categoryConfigCache.set(c.category.toUpperCase(), c);
+            categoryConfigCache.set(c.category.toLowerCase(), c);
+        });
+        cacheInitialized = true;
+    } catch (error) {
+        console.warn('Failed to load category configs, using defaults:', error);
     }
-    // Default fallback
+}
+
+// Set cache directly (used when loading configs)
+export function setCategoryConfigCache(configs: CategoryConfig[]): void {
+    categoryConfigCache.clear();
+    configs.forEach(c => {
+        categoryConfigCache.set(c.category.toUpperCase(), c);
+        categoryConfigCache.set(c.category.toLowerCase(), c);
+    });
+    cacheInitialized = true;
+}
+
+// Get category config (sync, uses cache)
+export function getDynamicCategoryConfig(category?: string): CategoryConfig {
+    if (!category) return DEFAULT_CONFIG;
+
+    const cached = categoryConfigCache.get(category.toUpperCase())
+        || categoryConfigCache.get(category.toLowerCase());
+    if (cached) return cached;
+
+    return DEFAULT_CONFIG;
+}
+
+// Legacy helper for static config (used by triggers)
+export function getCategoryConfig(category?: string) {
+    const config = getDynamicCategoryConfig(category);
+
+    // Map to the format expected by triggers
     return {
-        target_kp_pct: 0.12,
-        ctr_high: 4.0,
-        ctr_low: 1.5,
-        cr_high: 4.0,
-        cr_low: 1.5,
+        target_kp_pct: config.min_margin_pct / 100,
+        ctr_high: config.ctr_warning * 1.5,
+        ctr_low: config.ctr_warning * 0.6,
+        cr_high: config.cr_order_warning * 1.5,
+        cr_low: config.cr_order_warning * 0.6,
+        min_margin_pct: config.min_margin_pct,
+        price_step_pct: config.price_step_pct,
+        drr_warning: config.drr_warning,
+        stock_critical_days: config.stock_critical_days,
+        stock_overstock_days: config.stock_overstock_days,
     };
 }
 

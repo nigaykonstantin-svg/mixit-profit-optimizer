@@ -29,6 +29,7 @@ import {
 } from 'lucide-react';
 import { AnalyzedFunnelRow } from '@/modules/analytics/funnel-metrics';
 import { getSkuCatalog } from '@/modules/import/sku-catalog';
+import { setCategoryConfigCache } from '@/modules/pricing/price-config';
 
 type QualityFilter = 'all' | 'normal' | 'low_stock' | 'overpriced' | 'high_drr';
 type SortField = 'sku' | 'revenue' | 'views' | 'orders' | 'ctr' | 'cr_order' | 'total_drr' | 'stock';
@@ -59,6 +60,13 @@ export default function FunnelPage() {
     const fetchData = async () => {
         setLoading(true);
         try {
+            // Load category configs into cache first
+            const configRes = await fetch('/api/config/categories');
+            if (configRes.ok) {
+                const configs = await configRes.json();
+                setCategoryConfigCache(configs);
+            }
+
             const res = await fetch('/api/funnel');
             const { rows } = await res.json();
 
