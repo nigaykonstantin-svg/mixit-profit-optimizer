@@ -416,6 +416,7 @@ export default function FunnelPage() {
                                     <th className="text-right py-3 px-2 font-medium text-gray-600">Новая цена</th>
                                     <th className="text-left py-3 px-2 font-medium text-gray-600">Причина</th>
                                     <th className="text-center py-3 px-2 font-medium text-gray-600">Реклама</th>
+                                    <th className="text-left py-3 px-2 font-medium text-gray-600">Категория</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -464,14 +465,26 @@ export default function FunnelPage() {
                                         </td>
                                         <td className="py-3 px-2 text-center">
                                             <span className={`px-2 py-0.5 rounded text-xs font-medium ${row.ads_action === 'SCALE' ? 'bg-green-100 text-green-700' :
-                                                    row.ads_action === 'DOWN' ? 'bg-orange-100 text-orange-700' :
-                                                        row.ads_action === 'PAUSE' ? 'bg-red-100 text-red-700' :
-                                                            'bg-gray-100 text-gray-500'
+                                                row.ads_action === 'DOWN' ? 'bg-orange-100 text-orange-700' :
+                                                    row.ads_action === 'PAUSE' ? 'bg-red-100 text-red-700' :
+                                                        'bg-gray-100 text-gray-500'
                                                 }`}>
                                                 {row.ads_action === 'SCALE' ? '↑ Масштаб' :
                                                     row.ads_action === 'DOWN' ? '↓ Снизить' :
                                                         row.ads_action === 'PAUSE' ? '⏸ Пауза' : '—'}
                                             </span>
+                                        </td>
+                                        <td className="py-3 px-2 text-left text-xs">
+                                            {row.category ? (
+                                                <div>
+                                                    <span className="text-gray-700">{row.category}</span>
+                                                    {row.subcategory && (
+                                                        <span className="text-gray-400 ml-1">/ {row.subcategory}</span>
+                                                    )}
+                                                </div>
+                                            ) : (
+                                                <span className="text-gray-300">—</span>
+                                            )}
                                         </td>
                                     </tr>
                                 ))}

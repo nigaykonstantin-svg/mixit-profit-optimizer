@@ -296,6 +296,8 @@ export function getHighDrrSkus(
  */
 export interface AnalyzedFunnelRow {
     sku: string;
+    category?: string;
+    subcategory?: string;
     revenue: number;
     views: number;
     clicks: number;
@@ -338,6 +340,7 @@ export interface AnalyzedFunnelRow {
 // Import price engine
 import { priceEngineV1 } from '@/modules/pricing/price-engine';
 import { getReasonText } from '@/modules/pricing/price-config';
+import { getSkuCategory } from '@/modules/import/sku-catalog';
 
 /**
  * Analyze funnel data with computed quality metrics + price recommendations
@@ -361,6 +364,9 @@ export function analyzeFunnel(data: FunnelRow[]): AnalyzedFunnelRow[] {
             (row.drr_bloggers || 0) +
             (row.drr_other || 0);
 
+        // Get category from catalog
+        const catalogEntry = getSkuCategory(row.sku);
+
         // Price Engine V1
         const rec = priceEngineV1({
             sku: row.sku,
@@ -375,10 +381,13 @@ export function analyzeFunnel(data: FunnelRow[]): AnalyzedFunnelRow[] {
             drr_media: row.drr_media ?? 0,
             drr_bloggers: row.drr_bloggers ?? 0,
             total_drr: total_drr,
+            category: catalogEntry?.category as 'face' | 'hair' | 'body' | 'decor' | undefined,
         });
 
         return {
             sku: row.sku,
+            category: catalogEntry?.category,
+            subcategory: catalogEntry?.subcategory,
             revenue: row.revenue,
             views: row.views,
             clicks: row.clicks,
