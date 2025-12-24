@@ -39,6 +39,7 @@ export async function GET() {
         drr_media: row.drr_media || 0,
         drr_bloggers: row.drr_bloggers || 0,
         drr_other: row.drr_other || 0,
+        kp_pct: row.kp_pct || 0,
     }));
 
     // Apply analyzeFunnel to add computed fields
