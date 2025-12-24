@@ -454,10 +454,10 @@ export default function FunnelPage() {
                                         <td className="py-3 px-2 text-right text-gray-600">{(row.views / 1000).toFixed(1)}K</td>
                                         <td className="py-3 px-2 text-right text-gray-600">{row.orders}</td>
                                         <td className="py-3 px-2 text-right">
-                                            <span className={row.ctr > 2 ? 'text-green-600' : 'text-gray-600'}>{row.ctr.toFixed(1)}%</span>
+                                            <span className={row.ctr * 100 > 2 ? 'text-green-600' : 'text-gray-600'}>{(row.ctr * 100).toFixed(1)}%</span>
                                         </td>
                                         <td className="py-3 px-2 text-right">
-                                            <span className={row.cr_order < 1 ? 'text-orange-600' : 'text-gray-600'}>{row.cr_order.toFixed(2)}%</span>
+                                            <span className={row.cr_order * 100 < 1 ? 'text-orange-600' : 'text-gray-600'}>{(row.cr_order * 100).toFixed(2)}%</span>
                                         </td>
                                         <td className="py-3 px-2 text-right">
                                             <span className={row.kp_pct > 0.25 ? 'text-green-600 font-medium' : row.kp_pct < 0.15 ? 'text-red-600 font-medium' : 'text-gray-600'}>
