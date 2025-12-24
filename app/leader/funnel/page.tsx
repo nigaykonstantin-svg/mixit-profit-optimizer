@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { getCurrentUser, AuthUser } from '@/modules/auth';
 import { USER_ROLES, getExecutors } from '@/modules/users';
 import { Card, Button, Input } from '@/modules/shared';
@@ -39,6 +39,7 @@ const PAGE_SIZE = 100;
 
 export default function FunnelPage() {
     const router = useRouter();
+    const searchParams = useSearchParams();
     const [user, setUser] = useState<AuthUser | null>(null);
     const [mounted, setMounted] = useState(false);
     const [data, setData] = useState<AnalyzedFunnelRow[]>([]);
@@ -46,7 +47,7 @@ export default function FunnelPage() {
 
     // Pagination, search, filter, sort state
     const [page, setPage] = useState(1);
-    const [search, setSearch] = useState('');
+    const [search, setSearch] = useState(searchParams.get('sku') || '');
     const [filter, setFilter] = useState<QualityFilter>('all');
     const [sort, setSort] = useState<{ field: SortField; dir: SortDir }>({ field: 'revenue', dir: 'desc' });
 

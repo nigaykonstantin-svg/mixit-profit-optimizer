@@ -223,10 +223,14 @@ export default function LeaderDashboard() {
                                     </div>
                                     <div className="space-y-2 text-sm">
                                         {selectedCat.critical.slice(0, 3).map((item, i) => (
-                                            <div key={i} className="flex justify-between text-red-800">
-                                                <span>{item.sku}</span>
+                                            <button
+                                                key={i}
+                                                onClick={() => router.push(`/leader/funnel?sku=${item.sku}`)}
+                                                className="flex justify-between text-red-800 w-full hover:bg-red-100 rounded-lg px-2 py-1 transition-all text-left"
+                                            >
+                                                <span className="font-mono">{item.sku}</span>
                                                 <span>{item.reason}</span>
-                                            </div>
+                                            </button>
                                         ))}
                                         {selectedCat.critical.length === 0 && (
                                             <div className="text-red-400">Нет критичных SKU</div>
@@ -241,10 +245,14 @@ export default function LeaderDashboard() {
                                     </div>
                                     <div className="space-y-2 text-sm">
                                         {selectedCat.warning.slice(0, 3).map((item, i) => (
-                                            <div key={i} className="flex justify-between text-yellow-800">
-                                                <span>{item.sku}</span>
+                                            <button
+                                                key={i}
+                                                onClick={() => router.push(`/leader/funnel?sku=${item.sku}`)}
+                                                className="flex justify-between text-yellow-800 w-full hover:bg-yellow-100 rounded-lg px-2 py-1 transition-all text-left"
+                                            >
+                                                <span className="font-mono">{item.sku}</span>
                                                 <span>{item.reason}</span>
-                                            </div>
+                                            </button>
                                         ))}
                                         {selectedCat.warning.length === 0 && (
                                             <div className="text-yellow-400">Нет предупреждений</div>
@@ -259,10 +267,14 @@ export default function LeaderDashboard() {
                                     </div>
                                     <div className="space-y-2 text-sm">
                                         {selectedCat.recommendations.slice(0, 3).map((item, i) => (
-                                            <div key={i} className="flex justify-between text-green-800">
-                                                <span>{item.sku}</span>
+                                            <button
+                                                key={i}
+                                                onClick={() => router.push(`/leader/funnel?sku=${item.sku}`)}
+                                                className="flex justify-between text-green-800 w-full hover:bg-green-100 rounded-lg px-2 py-1 transition-all text-left"
+                                            >
+                                                <span className="font-mono">{item.sku}</span>
                                                 <span>{item.action}</span>
-                                            </div>
+                                            </button>
                                         ))}
                                         {selectedCat.recommendations.length === 0 && (
                                             <div className="text-green-400">Нет рекомендаций</div>
