@@ -55,6 +55,16 @@ export default function LeaderDashboard() {
     const [insights, setInsights] = useState<string | null>(null);
     const [insightsLoading, setInsightsLoading] = useState(false);
     const [insightsError, setInsightsError] = useState<string | null>(null);
+    const [insightRole, setInsightRole] = useState<string>('leader');
+
+    const INSIGHT_ROLE_OPTIONS = [
+        { id: 'leader', label: 'Владелец бизнеса', icon: '👔' },
+        { id: 'category_manager', label: 'Категорийный менеджер', icon: '📦' },
+        { id: 'mp_manager', label: 'Менеджер МП', icon: '🏪' },
+        { id: 'supply_chain', label: 'Supply Chain', icon: '🚚' },
+        { id: 'brand_owner', label: 'Бренд-менеджер', icon: '🎨' },
+        { id: 'marketing', label: 'Маркетинг', icon: '📈' },
+    ];
 
     const refreshTasks = useCallback(() => {
         setTasks(getTasks());
@@ -64,7 +74,7 @@ export default function LeaderDashboard() {
         setInsightsLoading(true);
         setInsightsError(null);
         try {
-            const res = await fetch('/api/insights');
+            const res = await fetch(`/api/insights?role=${insightRole}`);
             const data = await res.json();
             if (data.error) {
                 setInsightsError(data.error);
@@ -234,16 +244,34 @@ export default function LeaderDashboard() {
                             )}
                         </button>
                     </div>
+
+                    {/* Role Selector */}
+                    <div className="flex flex-wrap gap-2 mb-4">
+                        {INSIGHT_ROLE_OPTIONS.map((role) => (
+                            <button
+                                key={role.id}
+                                onClick={() => { setInsightRole(role.id); setInsights(null); }}
+                                className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all flex items-center gap-1.5 ${insightRole === role.id
+                                        ? 'bg-purple-600 text-white shadow-md'
+                                        : 'bg-white text-gray-600 hover:bg-purple-100 border border-gray-200'
+                                    }`}
+                            >
+                                <span>{role.icon}</span>
+                                <span className="hidden md:inline">{role.label}</span>
+                            </button>
+                        ))}
+                    </div>
+
                     {insightsError && (
                         <div className="text-red-600 text-sm mb-3">{insightsError}</div>
                     )}
                     {insights ? (
-                        <div className="prose prose-sm max-w-none text-gray-700 whitespace-pre-wrap">
+                        <div className="prose prose-sm max-w-none text-gray-700 whitespace-pre-wrap bg-white/50 rounded-xl p-4">
                             {insights}
                         </div>
                     ) : (
                         <div className="text-gray-500 text-sm">
-                            Нажмите &quot;Получить инсайты&quot; для AI-анализа данных по всем категориям
+                            Выберите роль и нажмите &quot;Получить инсайты&quot; для AI-анализа
                         </div>
                     )}
                 </div>
