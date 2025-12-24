@@ -55,15 +55,24 @@ const HEADER_MAP: Record<string, keyof FunnelRow> = {
 
     // FUNNEL
     "суммапоказы": "views",
+    "показы": "views",
     "суммаклики": "clicks",
+    "клики": "clicks",
     "суммавкорзину": "cart",
+    "вкорзину": "cart",
     "суммазаказаношт": "orders",
+    "заказы": "orders",
+    "заказаношт": "orders",
 
-    // CONVERSION
+    // CONVERSION - multiple variations
     "ctr": "ctr",
+    "ctr%": "ctr",
+    "clickthroughrate": "ctr",
     "crвкорзину": "cr_cart",
     "crвзаказ": "cr_order",
+    "crвзаказ%": "cr_order",
     "cr0": "cr_order",
+    "cr": "cr_order",
 
     // PRICES
     "ценаруб": "avg_price",
