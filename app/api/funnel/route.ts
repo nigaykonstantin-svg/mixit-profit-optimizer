@@ -2,10 +2,20 @@ import { NextResponse } from 'next/server';
 import { getSupabaseClient, isSupabaseConfigured } from '@/analytics-engine/supabase/supabase-client';
 import { analyzeFunnel } from '@/modules/analytics/funnel-metrics';
 import { FunnelRow } from '@/modules/import/funnel-parser';
+import { setCategoryConfigCache } from '@/modules/pricing/price-config';
+import { getCategoryConfigs } from '@/modules/config';
 
 export async function GET() {
     if (!isSupabaseConfigured()) {
         return NextResponse.json({ error: 'Supabase not configured', rows: [] }, { status: 500 });
+    }
+
+    // Load fresh category configs and set cache (for Price Engine)
+    try {
+        const configs = await getCategoryConfigs();
+        setCategoryConfigCache(configs);
+    } catch (e) {
+        console.warn('Failed to load category configs:', e);
     }
 
     const supabase = getSupabaseClient();
@@ -42,7 +52,7 @@ export async function GET() {
         kp_pct: row.kp_pct || 0,
     }));
 
-    // Apply analyzeFunnel to add computed fields
+    // Apply analyzeFunnel with fresh configs to recalculate recommendations
     const analyzed = analyzeFunnel(funnelRows);
 
     return NextResponse.json({ rows: analyzed });
