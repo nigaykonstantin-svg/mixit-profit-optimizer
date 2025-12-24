@@ -116,10 +116,32 @@ export async function initializeCategoryConfigCache(): Promise<void> {
 // Set cache directly (used when loading configs)
 export function setCategoryConfigCache(configs: CategoryConfig[]): void {
     categoryConfigCache.clear();
+
+    // Russian name aliases for each category
+    const RUSSIAN_ALIASES: Record<string, string[]> = {
+        'HAIR': ['уход за волосами', 'волосы', 'шампуни', 'маски для волос', 'бальзамы', 'кондиционеры'],
+        'FACE': ['уход за лицом', 'лицо', 'кремы', 'сыворотки', 'гидрофильные масла', 'пудры', 'маски для лица'],
+        'BODY': ['уход за телом', 'тело', 'скрабы', 'лосьоны', 'гели', 'масла для тела'],
+        'MAKEUP': ['макияж', 'декоративная косметика', 'румяна', 'тени', 'помады', 'туши', 'подводки'],
+    };
+
     configs.forEach(c => {
-        categoryConfigCache.set(c.category.toUpperCase(), c);
-        categoryConfigCache.set(c.category.toLowerCase(), c);
+        const upperCat = c.category.toUpperCase();
+        const lowerCat = c.category.toLowerCase();
+
+        // Standard keys
+        categoryConfigCache.set(upperCat, c);
+        categoryConfigCache.set(lowerCat, c);
+
+        // Add Russian aliases for this category
+        const aliases = RUSSIAN_ALIASES[upperCat] || [];
+        aliases.forEach(alias => {
+            categoryConfigCache.set(alias, c);
+            categoryConfigCache.set(alias.toUpperCase(), c);
+        });
     });
+
+    console.log('[Config Cache] Initialized with', categoryConfigCache.size, 'entries');
     cacheInitialized = true;
 }
 
