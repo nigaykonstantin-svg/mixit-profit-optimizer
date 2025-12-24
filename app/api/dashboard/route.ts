@@ -1,9 +1,16 @@
 import { NextResponse } from 'next/server';
 import { getSupabaseClient, isSupabaseConfigured } from '@/analytics-engine/supabase/supabase-client';
-import { analyzeFunnel } from '@/modules/analytics/funnel-metrics';
+import { analyzeFunnel, AnalyzedFunnelRow } from '@/modules/analytics/funnel-metrics';
 import { FunnelRow } from '@/modules/import/funnel-parser';
 import { setCategoryConfigCache } from '@/modules/pricing/price-config';
 import { getCategoryConfigs } from '@/modules/config';
+
+interface SkuInsight {
+    sku: string;
+    value: number;
+    detail: string;
+    category?: string;
+}
 
 interface CategoryStats {
     id: string;
@@ -19,6 +26,16 @@ interface CategoryStats {
     recommendations: { sku: string; action: string }[];
 }
 
+interface SegmentedInsights {
+    lowCtr: SkuInsight[];
+    lowCrCart: SkuInsight[];
+    lowCrOrder: SkuInsight[];
+    priceDown: SkuInsight[];
+    priceUp: SkuInsight[];
+    lowStock: SkuInsight[];
+    overstock: SkuInsight[];
+}
+
 // Icon mapping for known categories
 function getCategoryIcon(category: string): string {
     const lowerCat = category.toLowerCase();
@@ -28,6 +45,110 @@ function getCategoryIcon(category: string): string {
     if (lowerCat.includes('decor') || lowerCat.includes('декор')) return '💄';
     if (lowerCat.includes('makeup') || lowerCat.includes('макияж')) return '💄';
     return '📦';
+}
+
+// Build segmented insights from analyzed data
+function buildSegmentedInsights(
+    analyzed: AnalyzedFunnelRow[],
+    skuToCategory: Map<string, string>
+): SegmentedInsights {
+    const TOP_N = 50;
+
+    // Low CTR (sorted by CTR ascending, only with enough views)
+    const lowCtr = analyzed
+        .filter(r => r.views > 100 && r.ctr < 0.03) // CTR < 3%
+        .sort((a, b) => a.ctr - b.ctr)
+        .slice(0, TOP_N)
+        .map(r => ({
+            sku: r.sku,
+            value: r.ctr * 100,
+            detail: `CTR ${(r.ctr * 100).toFixed(2)}%`,
+            category: skuToCategory.get(r.sku) || r.category,
+        }));
+
+    // Low CR Cart (sorted ascending)
+    const lowCrCart = analyzed
+        .filter(r => r.clicks > 50 && r.cr_order < 0.02) // CR < 2%
+        .sort((a, b) => a.cr_order - b.cr_order)
+        .slice(0, TOP_N)
+        .map(r => ({
+            sku: r.sku,
+            value: r.cr_order * 100,
+            detail: `CR корзины ${(r.cr_order * 100).toFixed(2)}%`,
+            category: skuToCategory.get(r.sku) || r.category,
+        }));
+
+    // Low CR Order (sorted ascending)
+    const lowCrOrder = analyzed
+        .filter(r => r.clicks > 50 && r.cr_order < 0.015) // CR < 1.5%
+        .sort((a, b) => a.cr_order - b.cr_order)
+        .slice(0, TOP_N)
+        .map(r => ({
+            sku: r.sku,
+            value: r.cr_order * 100,
+            detail: `CR заказа ${(r.cr_order * 100).toFixed(2)}%`,
+            category: skuToCategory.get(r.sku) || r.category,
+        }));
+
+    // Price Down recommendations (by revenue for priority)
+    const priceDown = analyzed
+        .filter(r => r.price_action === 'DOWN')
+        .sort((a, b) => b.revenue - a.revenue)
+        .slice(0, TOP_N)
+        .map(r => ({
+            sku: r.sku,
+            value: r.price_step_pct * 100,
+            detail: `↓ ${Math.abs(r.price_step_pct * 100).toFixed(0)}% — ${r.reason_text}`,
+            category: skuToCategory.get(r.sku) || r.category,
+        }));
+
+    // Price Up recommendations
+    const priceUp = analyzed
+        .filter(r => r.price_action === 'UP')
+        .sort((a, b) => b.revenue - a.revenue)
+        .slice(0, TOP_N)
+        .map(r => ({
+            sku: r.sku,
+            value: r.price_step_pct * 100,
+            detail: `↑ +${Math.abs(r.price_step_pct * 100).toFixed(0)}% — ${r.reason_text}`,
+            category: skuToCategory.get(r.sku) || r.category,
+        }));
+
+    // Low Stock (critical)
+    const lowStock = analyzed
+        .filter(r => r.stock < 20)
+        .sort((a, b) => a.stock - b.stock)
+        .slice(0, TOP_N)
+        .map(r => ({
+            sku: r.sku,
+            value: r.stock,
+            detail: `сток ${r.stock} шт`,
+            category: skuToCategory.get(r.sku) || r.category,
+        }));
+
+    // Overstock (high stock cover)
+    const overstock = analyzed
+        .filter(r => {
+            const stockCover = r.orders > 0 ? (r.stock / r.orders) * 7 : 999;
+            return stockCover > 90;
+        })
+        .sort((a, b) => {
+            const coverA = a.orders > 0 ? (a.stock / a.orders) * 7 : 999;
+            const coverB = b.orders > 0 ? (b.stock / b.orders) * 7 : 999;
+            return coverB - coverA;
+        })
+        .slice(0, TOP_N)
+        .map(r => {
+            const stockCover = r.orders > 0 ? Math.round((r.stock / r.orders) * 7) : 999;
+            return {
+                sku: r.sku,
+                value: stockCover,
+                detail: `${stockCover} дней запаса`,
+                category: skuToCategory.get(r.sku) || r.category,
+            };
+        });
+
+    return { lowCtr, lowCrCart, lowCrOrder, priceDown, priceUp, lowStock, overstock };
 }
 
 export async function GET() {
@@ -93,6 +214,9 @@ export async function GET() {
     // Analyze with Price Engine
     const analyzed = analyzeFunnel(funnelRows);
 
+    // Build segmented insights (top 50 each)
+    const insights = buildSegmentedInsights(analyzed, skuToCategory);
+
     // Aggregate by category (from sku_catalog)
     const categoryStats: Record<string, CategoryStats> = {};
 
@@ -131,7 +255,7 @@ export async function GET() {
         // Price recommendations
         if (row.price_action === 'DOWN') {
             cat.needsPriceDown++;
-            cat.warning.push({ sku: row.sku, reason: `↓ цену ${row.price_step_pct}%` });
+            cat.warning.push({ sku: row.sku, reason: `↓ цену ${Math.abs(row.price_step_pct * 100).toFixed(0)}%` });
         }
 
         // General recommendations
@@ -157,10 +281,10 @@ export async function GET() {
         if (catRows.length > 0) {
             cat.avgCr = catRows.reduce((sum, r) => sum + r.cr_order, 0) / catRows.length;
         }
-        // Limit arrays to top 5
-        cat.critical = cat.critical.slice(0, 5);
-        cat.warning = cat.warning.slice(0, 5);
-        cat.recommendations = cat.recommendations.slice(0, 5);
+        // Limit arrays to top 10 for category view
+        cat.critical = cat.critical.slice(0, 10);
+        cat.warning = cat.warning.slice(0, 10);
+        cat.recommendations = cat.recommendations.slice(0, 10);
     }
 
     // Sort categories by revenue
@@ -174,6 +298,7 @@ export async function GET() {
 
     return NextResponse.json({
         categories: sortedCategories,
+        insights,
         totals: {
             revenue: totalRevenue,
             orders: totalOrders,

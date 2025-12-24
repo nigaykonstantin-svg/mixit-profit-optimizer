@@ -123,16 +123,65 @@ export function setCategoryConfigCache(configs: CategoryConfig[]): void {
     cacheInitialized = true;
 }
 
+// Russian to English category mapping
+const CATEGORY_ALIASES: Record<string, string> = {
+    // Hair
+    'уход за волосами': 'HAIR',
+    'волосы': 'HAIR',
+    'шампуни': 'HAIR',
+    'маски для волос': 'HAIR',
+    // Face
+    'уход за лицом': 'FACE',
+    'лицо': 'FACE',
+    'кремы': 'FACE',
+    'сыворотки': 'FACE',
+    'гидрофильные масла': 'FACE',
+    'пудры': 'FACE',
+    // Body
+    'уход за телом': 'BODY',
+    'тело': 'BODY',
+    'скрабы': 'BODY',
+    'лосьоны': 'BODY',
+    // Makeup
+    'макияж': 'MAKEUP',
+    'декоративная косметика': 'MAKEUP',
+    'румяна': 'MAKEUP',
+    'тени': 'MAKEUP',
+    'помады': 'MAKEUP',
+};
+
+// Normalize category name to config key
+function normalizeCategoryName(category: string): string {
+    const lower = category.toLowerCase();
+
+    // Direct match in aliases
+    if (CATEGORY_ALIASES[lower]) {
+        return CATEGORY_ALIASES[lower];
+    }
+
+    // Partial match
+    for (const [alias, normalized] of Object.entries(CATEGORY_ALIASES)) {
+        if (lower.includes(alias) || alias.includes(lower)) {
+            return normalized;
+        }
+    }
+
+    return category.toUpperCase();
+}
+
 // Get category config (sync, uses cache)
 export function getDynamicCategoryConfig(category?: string): CategoryConfig {
     if (!category) return DEFAULT_CONFIG;
 
-    const cached = categoryConfigCache.get(category.toUpperCase())
+    const normalized = normalizeCategoryName(category);
+    const cached = categoryConfigCache.get(normalized)
+        || categoryConfigCache.get(category.toUpperCase())
         || categoryConfigCache.get(category.toLowerCase());
     if (cached) return cached;
 
     return DEFAULT_CONFIG;
 }
+
 
 // Legacy helper for static config (used by triggers)
 export function getCategoryConfig(category?: string) {
