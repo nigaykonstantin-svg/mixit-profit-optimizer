@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { getCurrentUser, logout, AuthUser } from '@/modules/auth';
 import { getTasks, TaskCard, QuickTask, Task, TASK_STATUSES, TaskStatus } from '@/modules/tasks';
 import { USERS, UserId, getExecutors, USER_ROLES } from '@/modules/users';
-import { LogOut, Filter, Clock, Play, CheckCircle2, LayoutGrid, Settings, Upload, TrendingDown, Columns3, Table, List, RefreshCw } from 'lucide-react';
+import { LogOut, Filter, Clock, Play, CheckCircle2, LayoutGrid, Settings, Upload, TrendingDown, Columns3, Table, List, RefreshCw, Sparkles, Loader2 } from 'lucide-react';
 
 interface CategoryData {
     id: string;
@@ -51,9 +51,32 @@ export default function LeaderDashboard() {
     const [dashboardData, setDashboardData] = useState<DashboardData | null>(null);
     const [loading, setLoading] = useState(true);
 
+    // AI Insights state
+    const [insights, setInsights] = useState<string | null>(null);
+    const [insightsLoading, setInsightsLoading] = useState(false);
+    const [insightsError, setInsightsError] = useState<string | null>(null);
+
     const refreshTasks = useCallback(() => {
         setTasks(getTasks());
     }, []);
+
+    const fetchInsights = async () => {
+        setInsightsLoading(true);
+        setInsightsError(null);
+        try {
+            const res = await fetch('/api/insights');
+            const data = await res.json();
+            if (data.error) {
+                setInsightsError(data.error);
+            } else {
+                setInsights(data.insights);
+            }
+        } catch (e) {
+            setInsightsError('Не удалось загрузить инсайты');
+        } finally {
+            setInsightsLoading(false);
+        }
+    };
 
     const fetchDashboardData = async () => {
         setLoading(true);
@@ -183,6 +206,45 @@ export default function LeaderDashboard() {
                                 </div>
                             </button>
                         ))
+                    )}
+                </div>
+
+                {/* AI Insights Block */}
+                <div className="bg-gradient-to-r from-purple-50 to-indigo-50 rounded-2xl p-5 border border-purple-100">
+                    <div className="flex items-center justify-between mb-4">
+                        <div className="flex items-center gap-2">
+                            <Sparkles className="text-purple-600" size={20} />
+                            <h2 className="font-semibold text-gray-900">AI-Аналитик</h2>
+                        </div>
+                        <button
+                            onClick={fetchInsights}
+                            disabled={insightsLoading}
+                            className="px-4 py-2 bg-purple-600 text-white rounded-xl text-sm font-medium hover:bg-purple-700 transition-all disabled:opacity-50 flex items-center gap-2"
+                        >
+                            {insightsLoading ? (
+                                <>
+                                    <Loader2 className="animate-spin" size={16} />
+                                    Анализирую...
+                                </>
+                            ) : (
+                                <>
+                                    <Sparkles size={16} />
+                                    Получить инсайты
+                                </>
+                            )}
+                        </button>
+                    </div>
+                    {insightsError && (
+                        <div className="text-red-600 text-sm mb-3">{insightsError}</div>
+                    )}
+                    {insights ? (
+                        <div className="prose prose-sm max-w-none text-gray-700 whitespace-pre-wrap">
+                            {insights}
+                        </div>
+                    ) : (
+                        <div className="text-gray-500 text-sm">
+                            Нажмите &quot;Получить инсайты&quot; для AI-анализа данных по всем категориям
+                        </div>
                     )}
                 </div>
 
