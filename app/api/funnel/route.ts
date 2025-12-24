@@ -13,17 +13,32 @@ export async function GET() {
     // Load fresh category configs and set cache (for Price Engine)
     try {
         const configs = await getCategoryConfigs();
+        console.log('[Funnel API] Loaded category configs:', configs.map(c => ({
+            category: c.category,
+            min_margin_pct: c.min_margin_pct,
+            stock_critical_days: c.stock_critical_days,
+            stock_overstock_days: c.stock_overstock_days
+        })));
         setCategoryConfigCache(configs);
     } catch (e) {
-        console.warn('Failed to load category configs:', e);
+        console.warn('[Funnel API] Failed to load category configs:', e);
     }
 
     const supabase = getSupabaseClient();
 
     // Load SKU catalog for category mapping
-    const { data: catalogData } = await supabase
+    const { data: catalogData, error: catalogError } = await supabase
         .from('sku_catalog')
         .select('sku, category, subcategory');
+
+    if (catalogError) {
+        console.warn('[Funnel API] SKU catalog not found or error:', catalogError.message);
+    } else {
+        console.log('[Funnel API] Loaded SKU catalog:', catalogData?.length || 0, 'entries');
+        if (catalogData && catalogData.length > 0) {
+            console.log('[Funnel API] Sample catalog entries:', catalogData.slice(0, 3));
+        }
+    }
 
     const skuCatalog = new Map<string, { category: string; subcategory?: string }>();
     (catalogData || []).forEach(row => {
@@ -65,5 +80,10 @@ export async function GET() {
     // Apply analyzeFunnel with SKU catalog for category lookups
     const analyzed = analyzeFunnelWithCatalog(funnelRows, skuCatalog);
 
-    return NextResponse.json({ rows: analyzed });
+    return NextResponse.json({ rows: analyzed }, {
+        headers: {
+            'Cache-Control': 'no-store, no-cache, must-revalidate',
+            'Pragma': 'no-cache',
+        },
+    });
 }

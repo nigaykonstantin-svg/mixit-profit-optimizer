@@ -117,6 +117,10 @@ export async function initializeCategoryConfigCache(): Promise<void> {
 export function setCategoryConfigCache(configs: CategoryConfig[]): void {
     categoryConfigCache.clear();
 
+    console.log('[Config Cache] Setting cache with', configs.length, 'configs:',
+        configs.map(c => ({ category: c.category, min_margin_pct: c.min_margin_pct, stock_critical_days: c.stock_critical_days }))
+    );
+
     // Russian name aliases for each category
     const RUSSIAN_ALIASES: Record<string, string[]> = {
         'HAIR': ['уход за волосами', 'волосы', 'шампуни', 'маски для волос', 'бальзамы', 'кондиционеры'],
@@ -141,7 +145,9 @@ export function setCategoryConfigCache(configs: CategoryConfig[]): void {
         });
     });
 
-    console.log('[Config Cache] Initialized with', categoryConfigCache.size, 'entries');
+    console.log('[Config Cache] Initialized with', categoryConfigCache.size, 'entries:',
+        Array.from(categoryConfigCache.keys())
+    );
     cacheInitialized = true;
 }
 
@@ -193,14 +199,34 @@ function normalizeCategoryName(category: string): string {
 
 // Get category config (sync, uses cache)
 export function getDynamicCategoryConfig(category?: string): CategoryConfig {
-    if (!category) return DEFAULT_CONFIG;
+    if (!category) {
+        console.log('[Price Config] No category provided, using DEFAULT');
+        return DEFAULT_CONFIG;
+    }
 
     const normalized = normalizeCategoryName(category);
+    console.log('[Price Config] Looking up category:', {
+        original: category,
+        normalized,
+        cacheSize: categoryConfigCache.size,
+        cacheKeys: Array.from(categoryConfigCache.keys()).slice(0, 10)
+    });
+
     const cached = categoryConfigCache.get(normalized)
         || categoryConfigCache.get(category.toUpperCase())
         || categoryConfigCache.get(category.toLowerCase());
-    if (cached) return cached;
 
+    if (cached) {
+        console.log('[Price Config] Found config for', category, ':', {
+            min_margin_pct: cached.min_margin_pct,
+            stock_critical_days: cached.stock_critical_days,
+            stock_overstock_days: cached.stock_overstock_days,
+            price_step_pct: cached.price_step_pct
+        });
+        return cached;
+    }
+
+    console.warn('[Price Config] No config found for', category, ', using DEFAULT');
     return DEFAULT_CONFIG;
 }
 

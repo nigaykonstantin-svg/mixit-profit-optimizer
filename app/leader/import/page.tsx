@@ -87,9 +87,18 @@ export default function ImportPage() {
             if (entries.length === 0) {
                 setCatalogResult({ success: false, error: 'Не найдены колонки sku и category' });
             } else {
-                saveSkuCatalog(entries);
-                refreshCatalogStats();
-                setCatalogResult({ success: true, count: entries.length });
+                // Use async upsert to Supabase
+                const { upsertSkuCatalog, getCatalogStatsAsync } = await import('@/modules/import/sku-catalog');
+                const result = await upsertSkuCatalog(entries);
+
+                if (result.success) {
+                    // Refresh stats from Supabase
+                    const stats = await getCatalogStatsAsync();
+                    setCatalogStats(stats);
+                    setCatalogResult({ success: true, count: entries.length });
+                } else {
+                    setCatalogResult({ success: false, error: result.error || 'Failed to save to database' });
+                }
             }
         } catch (error) {
             setCatalogResult({ success: false, error: String(error) });

@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getSupabaseClient, isSupabaseConfigured } from '@/analytics-engine/supabase/supabase-client';
-import { analyzeFunnel, AnalyzedFunnelRow } from '@/modules/analytics/funnel-metrics';
+import { analyzeFunnelWithCatalog, AnalyzedFunnelRow } from '@/modules/analytics/funnel-metrics';
 import { FunnelRow } from '@/modules/import/funnel-parser';
 import { setCategoryConfigCache } from '@/modules/pricing/price-config';
 import { getCategoryConfigs } from '@/modules/config';
@@ -211,8 +211,14 @@ export async function GET() {
         kp_pct: row.kp_pct || 0,
     }));
 
-    // Analyze with Price Engine
-    const analyzed = analyzeFunnel(funnelRows);
+    // Create skuCatalog Map for Price Engine (needs category and subcategory)
+    const skuCatalog = new Map<string, { category: string; subcategory?: string }>();
+    (catalogData || []).forEach(row => {
+        skuCatalog.set(row.sku, { category: row.category, subcategory: row.subcategory });
+    });
+
+    // Analyze with Price Engine - using catalog for category-specific configs
+    const analyzed = analyzeFunnelWithCatalog(funnelRows, skuCatalog);
 
     // Build segmented insights (top 50 each)
     const insights = buildSegmentedInsights(analyzed, skuToCategory);
@@ -287,8 +293,13 @@ export async function GET() {
         cat.recommendations = cat.recommendations.slice(0, 10);
     }
 
-    // Sort categories by revenue
-    const sortedCategories = Object.values(categoryStats).sort((a, b) => b.revenue - a.revenue);
+    // Categories to exclude from display
+    const EXCLUDED_CATEGORIES = ['Другое', 'Стирка', 'Парфюм', 'Пятновыводители', 'Спецодежда и СИЗы', 'Средства для посуды', 'Товары для животных'];
+
+    // Sort categories by revenue and filter out excluded ones
+    const sortedCategories = Object.values(categoryStats)
+        .filter(cat => !EXCLUDED_CATEGORIES.includes(cat.id))
+        .sort((a, b) => b.revenue - a.revenue);
 
     // Global stats
     const totalRevenue = analyzed.reduce((sum, r) => sum + r.revenue, 0);
@@ -305,6 +316,11 @@ export async function GET() {
             views: totalViews,
             clicks: totalClicks,
             skuCount: analyzed.length,
+        },
+    }, {
+        headers: {
+            'Cache-Control': 'no-store, no-cache, must-revalidate',
+            'Pragma': 'no-cache',
         },
     });
 }
