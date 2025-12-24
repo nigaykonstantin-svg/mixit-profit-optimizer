@@ -322,9 +322,14 @@ export interface AnalyzedFunnelRow {
     reason_text: string;
     next_review_date: string | null;
 
-    // Ads Optimizer
+    // Ads Optimizer (total)
     ads_action: 'SCALE' | 'HOLD' | 'DOWN' | 'PAUSE';
     ads_change_pct: number;
+
+    // Ads per channel
+    ads_search: { action: string; drr: number; detail: string };
+    ads_media: { action: string; drr: number; detail: string };
+    ads_bloggers: { action: string; drr: number; detail: string };
 
     // Traceability
     blocked_actions: string[];
@@ -405,6 +410,9 @@ export function analyzeFunnel(data: FunnelRow[]): AnalyzedFunnelRow[] {
             // Ads recommendations
             ads_action: rec.ads_action,
             ads_change_pct: rec.ads_change_pct,
+            ads_search: rec.ads_search,
+            ads_media: rec.ads_media,
+            ads_bloggers: rec.ads_bloggers,
 
             // Traceability
             blocked_actions: rec.blocked_actions,

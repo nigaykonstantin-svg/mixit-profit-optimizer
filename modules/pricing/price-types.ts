@@ -110,9 +110,14 @@ export interface PriceRecommendation {
     price_step_pct: number;
     recommended_price: number | null;
 
-    // Ads decision
+    // Ads decision (total)
     ads_action: AdsAction;
     ads_change_pct: number;
+
+    // Ads decision by channel
+    ads_search: { action: AdsAction; drr: number; detail: string };
+    ads_media: { action: AdsAction; drr: number; detail: string };
+    ads_bloggers: { action: AdsAction; drr: number; detail: string };
 
     // Reason
     reason_code: ReasonCode;

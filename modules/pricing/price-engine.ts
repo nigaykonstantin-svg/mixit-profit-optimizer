@@ -209,6 +209,9 @@ export function priceEngineV1(input: PriceEngineInput): PriceRecommendation {
     // If guards block everything, return HOLD
     if (!guards.can_change_price) {
         const adsResult = optimizeAds(input);
+        const adsSearch = optimizeChannelDrr(input.drr_search ?? 0, 'Поиск');
+        const adsMedia = optimizeChannelDrr(input.drr_media ?? 0, 'Медиа');
+        const adsBloggers = optimizeChannelDrr(input.drr_bloggers ?? 0, 'Блогеры');
 
         return {
             sku: input.sku,
@@ -217,6 +220,9 @@ export function priceEngineV1(input: PriceEngineInput): PriceRecommendation {
             recommended_price: null,
             ads_action: guards.ads_action_allowed.includes(adsResult.action) ? adsResult.action : 'HOLD',
             ads_change_pct: guards.ads_action_allowed.includes(adsResult.action) ? adsResult.change_pct : 0,
+            ads_search: adsSearch,
+            ads_media: adsMedia,
+            ads_bloggers: adsBloggers,
             reason_code: guards.blocking_reason ?? 'HOLD_NO_TRIGGER',
             reason_text: getReasonText(guards.blocking_reason ?? 'HOLD_NO_TRIGGER'),
             ttl_days: 7,
@@ -293,9 +299,14 @@ export function priceEngineV1(input: PriceEngineInput): PriceRecommendation {
         ? Math.round(input.avg_price * (1 + finalStep))
         : null;
 
-    // Step 6: Optimize ads
+    // Step 6: Optimize ads (total and per channel)
     const adsResult = optimizeAds(input);
     const finalAdsAction = guards.ads_action_allowed.includes(adsResult.action) ? adsResult.action : 'HOLD';
+
+    // Channel-specific DRR recommendations
+    const adsSearch = optimizeChannelDrr(input.drr_search ?? 0, 'Поиск');
+    const adsMedia = optimizeChannelDrr(input.drr_media ?? 0, 'Медиа');
+    const adsBloggers = optimizeChannelDrr(input.drr_bloggers ?? 0, 'Блогеры');
 
     return {
         sku: input.sku,
@@ -304,6 +315,9 @@ export function priceEngineV1(input: PriceEngineInput): PriceRecommendation {
         recommended_price: recommendedPrice,
         ads_action: finalAdsAction,
         ads_change_pct: finalAdsAction === adsResult.action ? adsResult.change_pct : 0,
+        ads_search: adsSearch,
+        ads_media: adsMedia,
+        ads_bloggers: adsBloggers,
         reason_code: trigger.reason,
         reason_text: getReasonText(trigger.reason),
         ttl_days: 7,
@@ -317,6 +331,25 @@ export function priceEngineV1(input: PriceEngineInput): PriceRecommendation {
             ads_detail: adsResult.detail,
         },
     };
+}
+
+// Helper for channel-specific DRR optimization
+function optimizeChannelDrr(drr: number, channelName: string): { action: AdsAction; drr: number; detail: string } {
+    const DRR_CONFIG = OPTIMIZER_CONFIG.drr;
+
+    if (drr > DRR_CONFIG.critical) {
+        return { action: 'DOWN', drr, detail: `${channelName} DRR ${(drr * 100).toFixed(1)}% — снизить` };
+    }
+    if (drr > DRR_CONFIG.warning) {
+        return { action: 'HOLD', drr, detail: `${channelName} DRR ${(drr * 100).toFixed(1)}% — на грани` };
+    }
+    if (drr > 0 && drr < DRR_CONFIG.excellent) {
+        return { action: 'SCALE', drr, detail: `${channelName} DRR ${(drr * 100).toFixed(1)}% — масштабировать` };
+    }
+    if (drr > 0) {
+        return { action: 'HOLD', drr, detail: `${channelName} DRR ${(drr * 100).toFixed(1)}% — норма` };
+    }
+    return { action: 'HOLD', drr: 0, detail: `${channelName} нет данных` };
 }
 
 // Helper to add days
