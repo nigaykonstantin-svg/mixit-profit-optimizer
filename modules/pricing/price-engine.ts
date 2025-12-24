@@ -27,50 +27,59 @@ interface TriggerResult {
     detail: string;
 }
 
-// A) CLEAR — too much stock
+// A) CLEAR — too much stock (uses category config)
 function checkClearTrigger(input: PriceEngineInput): TriggerResult {
+    const categoryConfig = getCategoryConfig(input.category);
+    const overstockDays = categoryConfig.stock_overstock_days || CONFIG.clear_stock_cover_days;
+    const priceStep = (categoryConfig.price_step_pct || 3) / 100;
+
     const stockCover = input.stock_cover_days ??
         (input.orders_7d > 0 ? (input.stock_units / input.orders_7d) * 7 : 999);
 
-    if (stockCover >= CONFIG.clear_stock_cover_days) {
+    if (stockCover >= overstockDays) {
         return {
             triggered: true,
             action: 'DOWN',
-            step_pct: -0.03, // -3%
+            step_pct: -priceStep,
             reason: 'CLEAR',
-            detail: `stock_cover ${stockCover.toFixed(0)}d >= ${CONFIG.clear_stock_cover_days}d`,
+            detail: `stock_cover ${stockCover.toFixed(0)}d >= ${overstockDays}d`,
         };
     }
     return { triggered: false, action: 'HOLD', step_pct: 0, reason: 'HOLD_NO_TRIGGER', detail: '' };
 }
 
-// B) LOW_STOCK — deficit
+// B) LOW_STOCK — deficit (uses category config)
 function checkLowStockTrigger(input: PriceEngineInput): TriggerResult {
+    const categoryConfig = getCategoryConfig(input.category);
+    const criticalDays = categoryConfig.stock_critical_days || CONFIG.low_stock_cover_days;
+    const priceStep = (categoryConfig.price_step_pct || 3) / 100;
+
     const stockCover = input.stock_cover_days ??
         (input.orders_7d > 0 ? (input.stock_units / input.orders_7d) * 7 : 999);
 
-    if (stockCover <= CONFIG.low_stock_cover_days) {
+    if (stockCover <= criticalDays) {
         return {
             triggered: true,
             action: 'UP',
-            step_pct: 0.05, // +5%
+            step_pct: priceStep,
             reason: 'LOW_STOCK',
-            detail: `stock_cover ${stockCover.toFixed(0)}d <= ${CONFIG.low_stock_cover_days}d`,
+            detail: `stock_cover ${stockCover.toFixed(0)}d <= ${criticalDays}d`,
         };
     }
     return { triggered: false, action: 'HOLD', step_pct: 0, reason: 'HOLD_NO_TRIGGER', detail: '' };
 }
 
-// C) OVERPRICED — clicks but no orders
+// C) OVERPRICED — clicks but no orders (uses category config)
 function checkOverpricedTrigger(input: PriceEngineInput): TriggerResult {
     const categoryConfig = getCategoryConfig(input.category);
+    const priceStep = (categoryConfig.price_step_pct || 3) / 100;
 
     // CTR is good but CR is low
     if (input.ctr_pct >= categoryConfig.ctr_low && input.cr_order_pct < categoryConfig.cr_low) {
         return {
             triggered: true,
             action: 'DOWN',
-            step_pct: -0.03, // -3%
+            step_pct: -priceStep,
             reason: 'OVERPRICED',
             detail: `CTR ${input.ctr_pct.toFixed(2)}% ok, CR ${input.cr_order_pct.toFixed(2)}% < ${categoryConfig.cr_low}%`,
         };
