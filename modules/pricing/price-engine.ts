@@ -79,7 +79,7 @@ function checkOverpricedTrigger(input: PriceEngineInput): TriggerResult {
 }
 
 // ============================================
-// ADS OPTIMIZER (Profit-based, not DRR-based)
+// ADS OPTIMIZER (Profit-based + DRR fallback)
 // ============================================
 
 interface AdsResult {
@@ -92,52 +92,105 @@ interface AdsResult {
 }
 
 function optimizeAds(input: PriceEngineInput): AdsResult {
-    // If no ads data, return HOLD
-    if (!input.ad_spend_7d || !input.ad_orders_7d || input.ad_orders_7d === 0) {
+    const DRR_CONFIG = OPTIMIZER_CONFIG.drr;
+
+    // If we have ad spend data, use profit-based optimization
+    if (input.ad_spend_7d && input.ad_orders_7d && input.ad_orders_7d > 0) {
+        const cpo = input.ad_spend_7d / input.ad_orders_7d;
+        const cm0 = input.cm0_per_unit ?? (input.avg_price * (input.current_margin_pct ?? 0.15));
+        const profitPerAd = cm0 - cpo;
+
+        if (profitPerAd <= 0) {
+            return {
+                action: 'DOWN',
+                change_pct: -0.50,
+                reason: 'ADS_UNPROFITABLE',
+                cpo,
+                profit_per_ad: profitPerAd,
+                detail: `CPO ${cpo.toFixed(0)}₽ >= CM0 ${cm0.toFixed(0)}₽`,
+            };
+        }
+
+        if (profitPerAd > cm0 * 0.3) {
+            return {
+                action: 'SCALE',
+                change_pct: 0.20,
+                reason: 'ADS_PROFITABLE',
+                cpo,
+                profit_per_ad: profitPerAd,
+                detail: `Profit/ad ${profitPerAd.toFixed(0)}₽ > 30% CM0`,
+            };
+        }
+
+        return {
+            action: 'HOLD',
+            change_pct: 0,
+            reason: 'ADS_MARGINAL',
+            cpo,
+            profit_per_ad: profitPerAd,
+            detail: `Marginal profit ${profitPerAd.toFixed(0)}₽`,
+        };
+    }
+
+    // Fallback: use DRR data for recommendations
+    const totalDrr = input.total_drr ?? 0;
+
+    // DRR > critical (12%) → снизить рекламу
+    if (totalDrr > DRR_CONFIG.critical) {
+        return {
+            action: 'DOWN',
+            change_pct: -0.30,
+            reason: 'ADS_UNPROFITABLE',
+            cpo: 0,
+            profit_per_ad: 0,
+            detail: `DRR ${(totalDrr * 100).toFixed(1)}% > ${(DRR_CONFIG.critical * 100).toFixed(0)}%`,
+        };
+    }
+
+    // DRR > warning (10%) → держать/чуть снизить
+    if (totalDrr > DRR_CONFIG.warning) {
+        return {
+            action: 'HOLD',
+            change_pct: 0,
+            reason: 'ADS_MARGINAL',
+            cpo: 0,
+            profit_per_ad: 0,
+            detail: `DRR ${(totalDrr * 100).toFixed(1)}% — на грани`,
+        };
+    }
+
+    // DRR < excellent (6%) → можно масштабировать
+    if (totalDrr > 0 && totalDrr < DRR_CONFIG.excellent) {
+        return {
+            action: 'SCALE',
+            change_pct: 0.20,
+            reason: 'ADS_PROFITABLE',
+            cpo: 0,
+            profit_per_ad: 0,
+            detail: `DRR ${(totalDrr * 100).toFixed(1)}% < ${(DRR_CONFIG.excellent * 100).toFixed(0)}% — отлично`,
+        };
+    }
+
+    // DRR в норме (6-10%)
+    if (totalDrr > 0) {
         return {
             action: 'HOLD',
             change_pct: 0,
             reason: 'HOLD_NO_TRIGGER',
             cpo: 0,
             profit_per_ad: 0,
-            detail: 'No ads data',
+            detail: `DRR ${(totalDrr * 100).toFixed(1)}% — норма`,
         };
     }
 
-    const cpo = input.ad_spend_7d / input.ad_orders_7d;
-    const cm0 = input.cm0_per_unit ?? (input.avg_price * (input.current_margin_pct ?? 0.15));
-    const profitPerAd = cm0 - cpo;
-
-    // Profit-based decision
-    if (profitPerAd <= 0) {
-        return {
-            action: 'DOWN',
-            change_pct: -0.50, // reduce 50%
-            reason: 'ADS_UNPROFITABLE',
-            cpo,
-            profit_per_ad: profitPerAd,
-            detail: `CPO ${cpo.toFixed(0)}₽ >= CM0 ${cm0.toFixed(0)}₽`,
-        };
-    }
-
-    if (profitPerAd > cm0 * 0.3) {
-        return {
-            action: 'SCALE',
-            change_pct: 0.20, // scale +20%
-            reason: 'ADS_PROFITABLE',
-            cpo,
-            profit_per_ad: profitPerAd,
-            detail: `Profit/ad ${profitPerAd.toFixed(0)}₽ > 30% CM0`,
-        };
-    }
-
+    // No DRR data
     return {
         action: 'HOLD',
         change_pct: 0,
-        reason: 'ADS_MARGINAL',
-        cpo,
-        profit_per_ad: profitPerAd,
-        detail: `Marginal profit ${profitPerAd.toFixed(0)}₽`,
+        reason: 'HOLD_NO_TRIGGER',
+        cpo: 0,
+        profit_per_ad: 0,
+        detail: 'No ads data',
     };
 }
 
