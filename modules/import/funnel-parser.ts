@@ -145,7 +145,7 @@ export function parseFunnelSheet(fileBuffer: Buffer): FunnelRow[] {
         }
     }
 
-    return raw
+    const parsed = raw
         .map(row => {
             const out: any = {};
 
@@ -170,4 +170,11 @@ export function parseFunnelSheet(fileBuffer: Buffer): FunnelRow[] {
             return out.sku ? out as FunnelRow : null;
         })
         .filter(Boolean) as FunnelRow[];
+
+    // Debug: log first parsed row
+    if (parsed.length > 0) {
+        console.log("FIRST PARSED ROW:", JSON.stringify(parsed[0], null, 2));
+    }
+
+    return parsed;
 }
