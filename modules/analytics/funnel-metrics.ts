@@ -458,6 +458,8 @@ export function analyzeFunnelWithCatalog(
 
         // Get category from provided catalog
         const catalogEntry = skuCatalog.get(row.sku);
+        // Pass the original category name - price-config will normalize it
+        const categoryName = catalogEntry?.category || undefined;
 
         // Price Engine V1 with category from catalog
         const rec = priceEngineV1({
@@ -473,7 +475,7 @@ export function analyzeFunnelWithCatalog(
             drr_media: row.drr_media ?? 0,
             drr_bloggers: row.drr_bloggers ?? 0,
             total_drr: total_drr,
-            category: catalogEntry?.category as 'face' | 'hair' | 'body' | 'decor' | undefined,
+            category: categoryName,
         });
 
         return {

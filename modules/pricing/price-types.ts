@@ -97,8 +97,8 @@ export interface PriceEngineInput {
     last_price_change_at?: string | null;
     today?: string;
 
-    // Category
-    category?: 'face' | 'hair' | 'body' | 'decor';
+    // Category (any name - will be normalized internally)
+    category?: string;
 }
 
 // Full recommendation output
