@@ -1,6 +1,7 @@
 // API endpoint for role-based AI insights
 import { NextRequest, NextResponse } from 'next/server';
 import { generateInsightsForRole, isAnthropicConfigured, CategoryData, InsightRole, INSIGHT_ROLES } from '@/modules/ai/claude-client';
+import { saveInsight } from '@/modules/ai/insights-storage';
 
 export async function GET(request: NextRequest) {
     const searchParams = request.nextUrl.searchParams;
