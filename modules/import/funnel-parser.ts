@@ -86,8 +86,12 @@ const HEADER_MAP: Record<string, keyof FunnelRow> = {
     "drrблогеры": "drr_bloggers",
     "drростальное": "drr_other",
 
-    // KP (Commercial Profit)
+    // KP (Commercial Profit) - multiple variations
     "кп": "kp_pct",
+    "кп%": "kp_pct",
+    "кпpercent": "kp_pct",
+    "коммерческаяприбыль": "kp_pct",
+    "прибыль": "kp_pct",
 };
 
 /* ============================
@@ -125,13 +129,19 @@ export function parseFunnelSheet(fileBuffer: Buffer): FunnelRow[] {
     if (raw.length > 0) {
         console.log("Column headers:", Object.keys(raw[0]));
 
-        // Debug: print matches
+        // Debug: print all columns and whether they matched
+        const unmapped: string[] = [];
         for (const col of Object.keys(raw[0])) {
             const normalized = normalize(col);
             const mapped = HEADER_MAP[normalized];
             if (mapped) {
-                console.log(`  "${col}" -> normalized: "${normalized}" -> ${mapped}`);
+                console.log(`  MATCHED: "${col}" -> normalized: "${normalized}" -> ${mapped}`);
+            } else {
+                unmapped.push(`"${col}" (normalized: "${normalized}")`);
             }
+        }
+        if (unmapped.length > 0) {
+            console.log("  UNMATCHED:", unmapped.join(", "));
         }
     }
 
