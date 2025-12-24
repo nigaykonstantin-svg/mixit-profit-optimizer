@@ -28,6 +28,7 @@ import {
     Download
 } from 'lucide-react';
 import { AnalyzedFunnelRow } from '@/modules/analytics/funnel-metrics';
+import { getSkuCatalog } from '@/modules/import/sku-catalog';
 
 type QualityFilter = 'all' | 'normal' | 'low_stock' | 'overpriced' | 'high_drr';
 type SortField = 'sku' | 'revenue' | 'views' | 'orders' | 'ctr' | 'cr_order' | 'total_drr' | 'stock';
@@ -60,7 +61,19 @@ export default function FunnelPage() {
         try {
             const res = await fetch('/api/funnel');
             const { rows } = await res.json();
-            setData(rows || []);
+
+            // Enrich with category data from local catalog
+            const catalog = getSkuCatalog();
+            const enrichedRows = (rows || []).map((row: AnalyzedFunnelRow) => {
+                const catalogEntry = catalog.get(row.sku);
+                return {
+                    ...row,
+                    category: catalogEntry?.category || row.category,
+                    subcategory: catalogEntry?.subcategory || row.subcategory,
+                };
+            });
+
+            setData(enrichedRows);
         } catch (error) {
             console.error('Failed to fetch funnel data:', error);
         } finally {
