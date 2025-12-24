@@ -20,6 +20,7 @@ export default function LeaderDashboard() {
     const [tasks, setTasks] = useState<Task[]>([]);
     const [statusFilter, setStatusFilter] = useState<TaskStatus | 'all'>('all');
     const [executorFilter, setExecutorFilter] = useState<string>('all');
+    const [categoryFilter, setCategoryFilter] = useState('face');
     const [mounted, setMounted] = useState(false);
 
     const refreshTasks = useCallback(() => {
@@ -120,10 +121,11 @@ export default function LeaderDashboard() {
                         { id: 'hair', name: 'Волосы', icon: '💇', revenue: '38.1M', orders: 32150, alerts: 3 },
                         { id: 'body', name: 'Тело', icon: '🧴', revenue: '42.8M', orders: 41200, alerts: 2 },
                         { id: 'decor', name: 'Декор', icon: '💄', revenue: '32.6M', orders: 43014, alerts: 2 },
-                    ].map((cat, i) => (
+                    ].map((cat) => (
                         <button
                             key={cat.id}
-                            className={`flex-1 py-3 px-4 rounded-xl transition-all ${i === 0
+                            onClick={() => setCategoryFilter(cat.id)}
+                            className={`flex-1 py-3 px-4 rounded-xl transition-all cursor-pointer ${categoryFilter === cat.id
                                 ? 'bg-gradient-to-r from-purple-600 to-indigo-600 text-white shadow-lg'
                                 : 'text-gray-600 hover:bg-gray-50'
                                 }`}
@@ -132,7 +134,7 @@ export default function LeaderDashboard() {
                                 <span className="text-xl">{cat.icon}</span>
                                 <span className="font-medium">{cat.name}</span>
                             </div>
-                            <div className={`text-sm mt-1 ${i === 0 ? 'text-purple-200' : 'text-gray-400'}`}>
+                            <div className={`text-sm mt-1 ${categoryFilter === cat.id ? 'text-purple-200' : 'text-gray-400'}`}>
                                 {cat.revenue} ₽ • {cat.orders.toLocaleString()} заказов
                             </div>
                         </button>
