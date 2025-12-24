@@ -249,12 +249,14 @@ function mapExcelRowToDatabaseRow(row: FunnelRow) {
         cr_cart: row.cr_cart || 0,
         cr_order: row.cr_order || 0,
         avg_price: row.avg_price || 0,
+        client_price: row.client_price || 0,
         revenue: row.revenue || 0,
         stock_units: row.stock_units || 0,
         drr_search: row.drr_search || 0,
         drr_media: row.drr_media || 0,
         drr_bloggers: row.drr_bloggers || 0,
         drr_other: row.drr_other || 0,
+        kp_pct: row.kp_pct || 0,
     };
 }
 
