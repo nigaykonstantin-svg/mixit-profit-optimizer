@@ -6,6 +6,7 @@ import { getCurrentUser, logout, AuthUser } from '@/modules/auth';
 import { getTasks, TaskCard, QuickTask, Task, TASK_STATUSES, TaskStatus } from '@/modules/tasks';
 import { USERS, UserId, getExecutors, USER_ROLES } from '@/modules/users';
 import { LogOut, Filter, Clock, Play, CheckCircle2, LayoutGrid, Settings, Upload, TrendingDown, Columns3, Table, List, RefreshCw, Sparkles, Loader2 } from 'lucide-react';
+import ReactMarkdown from 'react-markdown';
 
 interface CategoryData {
     id: string;
@@ -252,8 +253,8 @@ export default function LeaderDashboard() {
                                 key={role.id}
                                 onClick={() => { setInsightRole(role.id); setInsights(null); }}
                                 className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all flex items-center gap-1.5 ${insightRole === role.id
-                                        ? 'bg-purple-600 text-white shadow-md'
-                                        : 'bg-white text-gray-600 hover:bg-purple-100 border border-gray-200'
+                                    ? 'bg-purple-600 text-white shadow-md'
+                                    : 'bg-white text-gray-600 hover:bg-purple-100 border border-gray-200'
                                     }`}
                             >
                                 <span>{role.icon}</span>
@@ -266,8 +267,8 @@ export default function LeaderDashboard() {
                         <div className="text-red-600 text-sm mb-3">{insightsError}</div>
                     )}
                     {insights ? (
-                        <div className="prose prose-sm max-w-none text-gray-700 whitespace-pre-wrap bg-white/50 rounded-xl p-4">
-                            {insights}
+                        <div className="bg-white/70 rounded-xl p-4 prose prose-sm max-w-none prose-headings:text-gray-900 prose-headings:font-semibold prose-h1:text-lg prose-h2:text-base prose-h3:text-sm prose-p:text-gray-700 prose-li:text-gray-700 prose-strong:text-gray-900 prose-ul:my-2 prose-ol:my-2">
+                            <ReactMarkdown>{insights}</ReactMarkdown>
                         </div>
                     ) : (
                         <div className="text-gray-500 text-sm">
