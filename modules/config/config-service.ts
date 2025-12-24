@@ -1,4 +1,4 @@
-'use client';
+// Config service - works on both server and client
 
 import { CategoryConfig } from '@/analytics-engine/wb/wb-config-loader';
 import { getSupabaseClient, isSupabaseConfigured } from '@/analytics-engine/supabase/supabase-client';
