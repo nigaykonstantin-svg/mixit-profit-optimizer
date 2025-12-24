@@ -414,6 +414,8 @@ export default function FunnelPage() {
                                     </th>
                                     <th className="text-center py-3 px-2 font-medium text-gray-600">Реком.</th>
                                     <th className="text-right py-3 px-2 font-medium text-gray-600">Новая цена</th>
+                                    <th className="text-left py-3 px-2 font-medium text-gray-600">Причина</th>
+                                    <th className="text-center py-3 px-2 font-medium text-gray-600">Реклама</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -451,11 +453,25 @@ export default function FunnelPage() {
                                                 row.price_action === 'DOWN' ? 'bg-red-100 text-red-700' :
                                                     'bg-gray-100 text-gray-700'
                                                 }`}>
-                                                {row.price_action === 'UP' ? '↑' : row.price_action === 'DOWN' ? '↓' : '—'} {row.price_step_pct ? `${row.price_step_pct}%` : ''}
+                                                {row.price_action === 'UP' ? '↑' : row.price_action === 'DOWN' ? '↓' : '—'} {row.price_step_pct ? `${(row.price_step_pct * 100).toFixed(0)}%` : ''}
                                             </span>
                                         </td>
                                         <td className="py-3 px-2 text-right text-gray-600">
                                             {row.recommended_price ? `${row.recommended_price.toLocaleString()} ₽` : '—'}
+                                        </td>
+                                        <td className="py-3 px-2 text-left text-xs text-gray-500 max-w-[120px] truncate" title={row.reason_text}>
+                                            {row.reason_text || '—'}
+                                        </td>
+                                        <td className="py-3 px-2 text-center">
+                                            <span className={`px-2 py-0.5 rounded text-xs font-medium ${row.ads_action === 'SCALE' ? 'bg-green-100 text-green-700' :
+                                                    row.ads_action === 'DOWN' ? 'bg-orange-100 text-orange-700' :
+                                                        row.ads_action === 'PAUSE' ? 'bg-red-100 text-red-700' :
+                                                            'bg-gray-100 text-gray-500'
+                                                }`}>
+                                                {row.ads_action === 'SCALE' ? '↑ Масштаб' :
+                                                    row.ads_action === 'DOWN' ? '↓ Снизить' :
+                                                        row.ads_action === 'PAUSE' ? '⏸ Пауза' : '—'}
+                                            </span>
                                         </td>
                                     </tr>
                                 ))}

@@ -1,119 +1,282 @@
-import { PRICE_ENGINE_CONFIG as C } from './price-config';
-import { applyGuards } from './price-guards';
-import { PriceEngineInput, PriceRecommendation } from './price-types';
+// ============================================
+// PRICE OPTIMIZER V1 - Main Engine
+// ============================================
 
-function toDateISO(d: Date): string {
-    return d.toISOString().slice(0, 10);
+import {
+    PriceEngineInput,
+    PriceRecommendation,
+    PriceAction,
+    AdsAction,
+    ReasonCode,
+    DecisionTraceItem,
+} from './price-types';
+import { OPTIMIZER_CONFIG, getCategoryConfig, getReasonText } from './price-config';
+import { applyAllGuards } from './price-guards';
+
+const CONFIG = OPTIMIZER_CONFIG.global;
+
+// ============================================
+// 3 TRIGGERS (the only reasons to change price)
+// ============================================
+
+interface TriggerResult {
+    triggered: boolean;
+    action: PriceAction;
+    step_pct: number;
+    reason: ReasonCode;
+    detail: string;
 }
 
-function addDaysISO(isoDate: string, days: number): string {
-    const d = new Date(isoDate + 'T00:00:00Z');
-    d.setUTCDate(d.getUTCDate() + days);
-    return toDateISO(d);
-}
+// A) CLEAR — too much stock
+function checkClearTrigger(input: PriceEngineInput): TriggerResult {
+    const stockCover = input.stock_cover_days ??
+        (input.orders_7d > 0 ? (input.stock_units / input.orders_7d) * 7 : 999);
 
-function clampAbsStepForGold(stepPct: number): number {
-    const maxAbs = C.gold_max_abs_step_pct;
-    if (stepPct > maxAbs) return maxAbs;
-    if (stepPct < -maxAbs) return -maxAbs;
-    return stepPct;
-}
-
-function roundPrice(p: number): number {
-    if (!isFinite(p) || p <= 0) return 0;
-    return Math.round(p);
-}
-
-function computeStockCoverDays(input: PriceEngineInput): number | null {
-    if (typeof input.stock_cover_days === 'number' && isFinite(input.stock_cover_days)) {
-        return input.stock_cover_days;
+    if (stockCover >= CONFIG.clear_stock_cover_days) {
+        return {
+            triggered: true,
+            action: 'DOWN',
+            step_pct: -0.03, // -3%
+            reason: 'CLEAR',
+            detail: `stock_cover ${stockCover.toFixed(0)}d >= ${CONFIG.clear_stock_cover_days}d`,
+        };
     }
-    const orders7 = input.orders_7d ?? 0;
-    const stock = input.stock_units ?? 0;
-    const salesPerDay = orders7 / 7;
-    if (salesPerDay <= 0) return null;
-    return stock / salesPerDay;
+    return { triggered: false, action: 'HOLD', step_pct: 0, reason: 'HOLD_NO_TRIGGER', detail: '' };
 }
+
+// B) LOW_STOCK — deficit
+function checkLowStockTrigger(input: PriceEngineInput): TriggerResult {
+    const stockCover = input.stock_cover_days ??
+        (input.orders_7d > 0 ? (input.stock_units / input.orders_7d) * 7 : 999);
+
+    if (stockCover <= CONFIG.low_stock_cover_days) {
+        return {
+            triggered: true,
+            action: 'UP',
+            step_pct: 0.05, // +5%
+            reason: 'LOW_STOCK',
+            detail: `stock_cover ${stockCover.toFixed(0)}d <= ${CONFIG.low_stock_cover_days}d`,
+        };
+    }
+    return { triggered: false, action: 'HOLD', step_pct: 0, reason: 'HOLD_NO_TRIGGER', detail: '' };
+}
+
+// C) OVERPRICED — clicks but no orders
+function checkOverpricedTrigger(input: PriceEngineInput): TriggerResult {
+    const categoryConfig = getCategoryConfig(input.category);
+
+    // CTR is good but CR is low
+    if (input.ctr_pct >= categoryConfig.ctr_low && input.cr_order_pct < categoryConfig.cr_low) {
+        return {
+            triggered: true,
+            action: 'DOWN',
+            step_pct: -0.03, // -3%
+            reason: 'OVERPRICED',
+            detail: `CTR ${input.ctr_pct.toFixed(2)}% ok, CR ${input.cr_order_pct.toFixed(2)}% < ${categoryConfig.cr_low}%`,
+        };
+    }
+    return { triggered: false, action: 'HOLD', step_pct: 0, reason: 'HOLD_NO_TRIGGER', detail: '' };
+}
+
+// ============================================
+// ADS OPTIMIZER (Profit-based, not DRR-based)
+// ============================================
+
+interface AdsResult {
+    action: AdsAction;
+    change_pct: number;
+    reason: ReasonCode;
+    cpo: number;
+    profit_per_ad: number;
+    detail: string;
+}
+
+function optimizeAds(input: PriceEngineInput): AdsResult {
+    // If no ads data, return HOLD
+    if (!input.ad_spend_7d || !input.ad_orders_7d || input.ad_orders_7d === 0) {
+        return {
+            action: 'HOLD',
+            change_pct: 0,
+            reason: 'HOLD_NO_TRIGGER',
+            cpo: 0,
+            profit_per_ad: 0,
+            detail: 'No ads data',
+        };
+    }
+
+    const cpo = input.ad_spend_7d / input.ad_orders_7d;
+    const cm0 = input.cm0_per_unit ?? (input.avg_price * (input.current_margin_pct ?? 0.15));
+    const profitPerAd = cm0 - cpo;
+
+    // Profit-based decision
+    if (profitPerAd <= 0) {
+        return {
+            action: 'DOWN',
+            change_pct: -0.50, // reduce 50%
+            reason: 'ADS_UNPROFITABLE',
+            cpo,
+            profit_per_ad: profitPerAd,
+            detail: `CPO ${cpo.toFixed(0)}₽ >= CM0 ${cm0.toFixed(0)}₽`,
+        };
+    }
+
+    if (profitPerAd > cm0 * 0.3) {
+        return {
+            action: 'SCALE',
+            change_pct: 0.20, // scale +20%
+            reason: 'ADS_PROFITABLE',
+            cpo,
+            profit_per_ad: profitPerAd,
+            detail: `Profit/ad ${profitPerAd.toFixed(0)}₽ > 30% CM0`,
+        };
+    }
+
+    return {
+        action: 'HOLD',
+        change_pct: 0,
+        reason: 'ADS_MARGINAL',
+        cpo,
+        profit_per_ad: profitPerAd,
+        detail: `Marginal profit ${profitPerAd.toFixed(0)}₽`,
+    };
+}
+
+// ============================================
+// MAIN ENGINE
+// ============================================
 
 export function priceEngineV1(input: PriceEngineInput): PriceRecommendation {
-    const today = input.today || toDateISO(new Date());
+    const today = input.today ?? new Date().toISOString().split('T')[0];
+    const decisionTrace: DecisionTraceItem[] = [];
 
-    // 1) GUARDS
-    const guards = applyGuards(input);
-    if (guards.hold) return guards.hold;
+    // Step 1: Apply guards
+    const guards = applyAllGuards(input, 0);
+    decisionTrace.push(...guards.decision_trace);
 
-    const stockCover = computeStockCoverDays(input);
+    // If guards block everything, return HOLD
+    if (!guards.can_change_price) {
+        const adsResult = optimizeAds(input);
 
-    // 2) TRIGGERS (only 3)
-    let action: PriceRecommendation['price_action'] = 'HOLD';
-    let stepPct = 0;
-    let reason: PriceRecommendation['reason_code'] = 'HOLD_NO_TRIGGER';
-
-    // Trigger A: CLEAR
-    if (stockCover !== null && stockCover >= C.clear_stock_cover_days) {
-        action = 'DOWN';
-        stepPct = C.step_down_pct;
-        reason = 'CLEAR';
+        return {
+            sku: input.sku,
+            price_action: 'HOLD',
+            price_step_pct: 0,
+            recommended_price: null,
+            ads_action: guards.ads_action_allowed.includes(adsResult.action) ? adsResult.action : 'HOLD',
+            ads_change_pct: guards.ads_action_allowed.includes(adsResult.action) ? adsResult.change_pct : 0,
+            reason_code: guards.blocking_reason ?? 'HOLD_NO_TRIGGER',
+            reason_text: getReasonText(guards.blocking_reason ?? 'HOLD_NO_TRIGGER'),
+            ttl_days: 7,
+            next_review_date: addDays(today, 7),
+            decision_trace: decisionTrace,
+            blocked_actions: guards.blocked_actions,
+            cpo: adsResult.cpo,
+            profit_per_ad: adsResult.profit_per_ad,
+        };
     }
 
-    // Trigger B: LOW STOCK (higher priority than CLEAR)
-    if (stockCover !== null && stockCover <= C.low_stock_cover_days) {
-        action = 'UP';
-        stepPct = C.step_up_pct;
-        reason = 'LOW_STOCK';
-    }
+    // Step 2: Check triggers in priority order
+    // Priority: LOW_STOCK > CLEAR > OVERPRICED
+    let trigger: TriggerResult = { triggered: false, action: 'HOLD', step_pct: 0, reason: 'HOLD_NO_TRIGGER', detail: '' };
 
-    // Trigger C: OVERPRICED (only if not LOW STOCK)
-    if (reason === 'HOLD_NO_TRIGGER' || reason === 'CLEAR') {
-        const ctr = input.ctr_pct ?? 0;
-        const crOrder = input.cr_order_pct ?? 0;
-        if (ctr >= C.ctr_ok_pct && crOrder < C.cr_order_low_pct) {
-            action = 'DOWN';
-            stepPct = C.step_down_pct;
-            reason = 'OVERPRICED';
+    const lowStock = checkLowStockTrigger(input);
+    if (lowStock.triggered) {
+        trigger = lowStock;
+        decisionTrace.push({
+            level: 5,
+            rule: 'TRIGGER_LOW_STOCK',
+            result: 'PASS',
+            detail: lowStock.detail,
+        });
+    } else {
+        const clear = checkClearTrigger(input);
+        if (clear.triggered) {
+            trigger = clear;
+            decisionTrace.push({
+                level: 5,
+                rule: 'TRIGGER_CLEAR',
+                result: 'PASS',
+                detail: clear.detail,
+            });
+        } else {
+            const overpriced = checkOverpricedTrigger(input);
+            if (overpriced.triggered) {
+                trigger = overpriced;
+                decisionTrace.push({
+                    level: 5,
+                    rule: 'TRIGGER_OVERPRICED',
+                    result: 'PASS',
+                    detail: overpriced.detail,
+                });
+            }
         }
     }
 
-    // 3) MIN MARGIN BLOCK (block only DOWN)
-    const hasMargin = typeof input.min_margin_pct === 'number' && isFinite(input.min_margin_pct);
-    if (action === 'DOWN' && hasMargin && (input.min_margin_pct as number) < C.min_margin_pct) {
-        action = 'HOLD';
-        stepPct = 0;
-        reason = 'MIN_MARGIN_BLOCK';
+    // Step 3: Apply Gold protection limit
+    let finalStep = trigger.step_pct;
+    if (input.is_gold && Math.abs(finalStep) > CONFIG.gold_max_step_pct) {
+        finalStep = finalStep > 0 ? CONFIG.gold_max_step_pct : -CONFIG.gold_max_step_pct;
+        decisionTrace.push({
+            level: 3,
+            rule: 'GOLD_STEP_LIMIT',
+            result: 'MODIFY',
+            detail: `Step limited to ±${(CONFIG.gold_max_step_pct * 100).toFixed(0)}%`,
+        });
     }
 
-    // 4) GOLD PROTECTION (clamp step + optional additional rule later)
-    if (input.is_gold) {
-        stepPct = clampAbsStepForGold(stepPct);
-        if (stepPct === 0) {
-            action = 'HOLD';
-            reason = 'GOLD_PROTECTION';
-        }
+    // Step 4: Check if action is allowed
+    const priceAction = trigger.action;
+    if (priceAction === 'DOWN' && guards.blocked_actions.includes('PRICE_DOWN')) {
+        finalStep = 0;
+        trigger.reason = 'MIN_MARGIN_BLOCK';
+    }
+    if (priceAction === 'UP' && guards.blocked_actions.includes('PRICE_UP')) {
+        finalStep = 0;
+        trigger.reason = 'RANK_DROP_BLOCK';
     }
 
-    const currentPrice = input.avg_price ?? 0;
-    const recommended = action === 'HOLD'
-        ? null
-        : roundPrice(currentPrice * (1 + stepPct / 100));
+    // Step 5: Calculate recommended price
+    const recommendedPrice = finalStep !== 0
+        ? Math.round(input.avg_price * (1 + finalStep))
+        : null;
 
-    const nextReview = (action === 'HOLD') ? null : addDaysISO(today, C.ttl_days);
+    // Step 6: Optimize ads
+    const adsResult = optimizeAds(input);
+    const finalAdsAction = guards.ads_action_allowed.includes(adsResult.action) ? adsResult.action : 'HOLD';
 
     return {
         sku: input.sku,
-        price_action: action,
-        price_step_pct: stepPct,
-        recommended_price: recommended,
-        reason_code: reason,
-        ttl_days: C.ttl_days,
-        next_review_date: nextReview,
+        price_action: finalStep > 0 ? 'UP' : finalStep < 0 ? 'DOWN' : 'HOLD',
+        price_step_pct: finalStep,
+        recommended_price: recommendedPrice,
+        ads_action: finalAdsAction,
+        ads_change_pct: finalAdsAction === adsResult.action ? adsResult.change_pct : 0,
+        reason_code: trigger.reason,
+        reason_text: getReasonText(trigger.reason),
+        ttl_days: 7,
+        next_review_date: addDays(today, 7),
+        decision_trace: decisionTrace,
+        blocked_actions: guards.blocked_actions,
+        cpo: adsResult.cpo,
+        profit_per_ad: adsResult.profit_per_ad,
         debug: {
-            stock_cover_days: stockCover,
-            ctr_pct: input.ctr_pct,
-            cr_order_pct: input.cr_order_pct,
-            avg_price: input.avg_price,
-            stock_units: input.stock_units,
-            clicks_7d: input.clicks_7d,
-            orders_7d: input.orders_7d,
+            trigger_detail: trigger.detail,
+            ads_detail: adsResult.detail,
         },
     };
+}
+
+// Helper to add days
+function addDays(dateStr: string, days: number): string {
+    const date = new Date(dateStr);
+    date.setDate(date.getDate() + days);
+    return date.toISOString().split('T')[0];
+}
+
+// ============================================
+// BATCH PROCESSING
+// ============================================
+
+export function runPriceOptimizer(inputs: PriceEngineInput[]): PriceRecommendation[] {
+    return inputs.map(input => priceEngineV1(input));
 }

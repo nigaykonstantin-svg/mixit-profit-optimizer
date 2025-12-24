@@ -319,11 +319,20 @@ export interface AnalyzedFunnelRow {
     price_step_pct: number;
     recommended_price: number | null;
     reason_code: string;
+    reason_text: string;
     next_review_date: string | null;
+
+    // Ads Optimizer
+    ads_action: 'SCALE' | 'HOLD' | 'DOWN' | 'PAUSE';
+    ads_change_pct: number;
+
+    // Traceability
+    blocked_actions: string[];
 }
 
 // Import price engine
 import { priceEngineV1 } from '@/modules/pricing/price-engine';
+import { getReasonText } from '@/modules/pricing/price-config';
 
 /**
  * Analyze funnel data with computed quality metrics + price recommendations
@@ -357,6 +366,10 @@ export function analyzeFunnel(data: FunnelRow[]): AnalyzedFunnelRow[] {
             avg_price: row.avg_price ?? 0,
             client_price: row.client_price ?? undefined,
             stock_units: row.stock_units ?? 0,
+            drr_search: row.drr_search ?? 0,
+            drr_media: row.drr_media ?? 0,
+            drr_bloggers: row.drr_bloggers ?? 0,
+            total_drr: total_drr,
         });
 
         return {
@@ -386,7 +399,15 @@ export function analyzeFunnel(data: FunnelRow[]): AnalyzedFunnelRow[] {
             price_step_pct: rec.price_step_pct,
             recommended_price: rec.recommended_price,
             reason_code: rec.reason_code,
+            reason_text: rec.reason_text || getReasonText(rec.reason_code),
             next_review_date: rec.next_review_date,
+
+            // Ads recommendations
+            ads_action: rec.ads_action,
+            ads_change_pct: rec.ads_change_pct,
+
+            // Traceability
+            blocked_actions: rec.blocked_actions,
         };
     });
 }
