@@ -22,8 +22,8 @@ export async function GET(request: NextRequest) {
 
     try {
         // Fetch dashboard data to analyze
-        const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
-        const dashboardRes = await fetch(`${baseUrl}/api/dashboard`, {
+        const origin = request.nextUrl.origin;
+        const dashboardRes = await fetch(`${origin}/api/dashboard`, {
             headers: { 'Cache-Control': 'no-cache' }
         });
         const dashboardData = await dashboardRes.json();
