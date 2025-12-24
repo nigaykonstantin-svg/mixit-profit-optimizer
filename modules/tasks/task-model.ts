@@ -40,6 +40,14 @@ export const TASK_STATUS_CONFIG: Record<TaskStatus, { label: string; iconName: s
     [TASK_STATUSES.DONE]: { label: 'Готово', iconName: 'CheckCircle2', className: 'bg-green-100 text-green-600' },
 };
 
+// Comment interface
+export interface TaskComment {
+    id: string;
+    text: string;
+    author: string;
+    createdAt: string;
+}
+
 // Task interface
 export interface Task {
     id: string;
@@ -51,6 +59,7 @@ export interface Task {
     createdAt: string;
     deadline?: string;
     category?: string;
+    comments?: TaskComment[];
 }
 
 // Categories

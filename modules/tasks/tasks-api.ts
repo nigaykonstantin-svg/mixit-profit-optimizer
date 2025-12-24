@@ -91,3 +91,20 @@ export function deleteTask(taskId: string): void {
     const tasks = getTasks().filter(t => t.id !== taskId);
     saveTasks(tasks);
 }
+
+export function addComment(taskId: string, text: string, author: string): void {
+    const tasks = getTasks();
+    const task = tasks.find(t => t.id === taskId);
+    if (task) {
+        if (!task.comments) {
+            task.comments = [];
+        }
+        task.comments.push({
+            id: Date.now().toString(),
+            text,
+            author,
+            createdAt: new Date().toISOString(),
+        });
+        saveTasks(tasks);
+    }
+}
