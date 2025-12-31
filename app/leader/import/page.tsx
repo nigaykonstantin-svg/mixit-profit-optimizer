@@ -83,9 +83,15 @@ export default function ImportPage() {
             const sheet = workbook.Sheets[sheetName];
             const data = XLSX.utils.sheet_to_json(sheet) as Record<string, unknown>[];
 
+            console.log('Parsed Excel data sample:', data.slice(0, 3));
+            console.log('Available columns:', data[0] ? Object.keys(data[0]) : []);
+
             const entries = parseCatalogData(data);
+            console.log('Parsed catalog entries:', entries.length, 'sample:', entries.slice(0, 3));
+
             if (entries.length === 0) {
-                setCatalogResult({ success: false, error: 'Не найдены колонки sku и category' });
+                const columns = data[0] ? Object.keys(data[0]).join(', ') : 'нет данных';
+                setCatalogResult({ success: false, error: `Не найдены колонки sku и category. Найденные колонки: ${columns}` });
             } else {
                 // Use async upsert to Supabase
                 const { upsertSkuCatalog, getCatalogStatsAsync } = await import('@/modules/import/sku-catalog');
@@ -101,7 +107,9 @@ export default function ImportPage() {
                 }
             }
         } catch (error) {
-            setCatalogResult({ success: false, error: String(error) });
+            console.error('Catalog upload error:', error);
+            const errorMessage = error instanceof Error ? error.message : JSON.stringify(error);
+            setCatalogResult({ success: false, error: errorMessage });
         } finally {
             setCatalogImporting(false);
             if (catalogInputRef.current) {
