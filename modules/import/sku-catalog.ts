@@ -175,20 +175,35 @@ export async function syncLocalToSupabase(): Promise<{ success: boolean; count: 
 
 export function parseCatalogData(data: Record<string, unknown>[]): SkuCatalogEntry[] {
     return data
-        .filter(row => row['sku'] || row['SKU'] || row['Артикул'] || row['артикул'])
-        .map(row => ({
-            sku: String(row['sku'] || row['SKU'] || row['Артикул'] || row['артикул'] || '').trim(),
-            category: String(row['category'] || row['Category'] || row['Категория'] || row['категория'] || '').trim(),
-            subcategory: row['subcategory'] || row['Subcategory'] || row['Подкатегория'] || row['подкатегория']
-                ? String(row['subcategory'] || row['Subcategory'] || row['Подкатегория'] || row['подкатегория']).trim()
-                : undefined,
-            name: row['name'] || row['Name'] || row['Название'] || row['название']
-                ? String(row['name'] || row['Name'] || row['Название'] || row['название']).trim()
-                : undefined,
-            brand: row['brand'] || row['Brand'] || row['Бренд'] || row['бренд']
-                ? String(row['brand'] || row['Brand'] || row['Бренд'] || row['бренд']).trim()
-                : 'MIXIT',
-        }))
+        .filter(row => row['sku'] || row['SKU'] || row['Артикул'] || row['артикул'] || row['sku_wb'])
+        .map(row => {
+            // SKU: support multiple column names
+            const sku = String(
+                row['sku'] || row['SKU'] || row['Артикул'] || row['артикул'] || row['sku_wb'] || ''
+            ).trim();
+            
+            // Category: support wb_category and other variants
+            const category = String(
+                row['category'] || row['Category'] || row['Категория'] || row['категория'] ||
+                row['wb_category'] || row['WB_category'] || ''
+            ).trim();
+            
+            // Subcategory: support wb_subcategory and other variants
+            const subcategoryRaw = row['subcategory'] || row['Subcategory'] || row['Подкатегория'] || row['подкатегория'] ||
+                row['wb_subcategory'] || row['WB_subcategory'];
+            const subcategory = subcategoryRaw ? String(subcategoryRaw).trim() : undefined;
+            
+            // Name: support product_name and other variants
+            const nameRaw = row['name'] || row['Name'] || row['Название'] || row['название'] ||
+                row['product_name'] || row['Product_name'] || row['ProductName'];
+            const name = nameRaw ? String(nameRaw).trim() : undefined;
+            
+            // Brand
+            const brandRaw = row['brand'] || row['Brand'] || row['Бренд'] || row['бренд'];
+            const brand = brandRaw ? String(brandRaw).trim() : 'MIXIT';
+            
+            return { sku, category, subcategory, name, brand };
+        })
         .filter(e => e.sku && e.category);
 }
 
