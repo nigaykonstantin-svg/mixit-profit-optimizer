@@ -78,6 +78,7 @@ export const OPTIMIZER_CONFIG: OptimizerConfig = {
 // ============================================
 
 import { CategoryConfig } from '@/analytics-engine/wb/wb-config-loader';
+import { CATEGORY_MAP, normalizeCategoryKey } from '@/modules/config/config-service';
 
 // Cache for category configs (loaded from Supabase via API)
 let categoryConfigCache: Map<string, CategoryConfig> = new Map();
@@ -121,24 +122,34 @@ export function setCategoryConfigCache(configs: CategoryConfig[]): void {
         configs.map(c => ({ category: c.category, min_margin_pct: c.min_margin_pct, stock_critical_days: c.stock_critical_days }))
     );
 
-    // Russian name aliases for each category
-    const RUSSIAN_ALIASES: Record<string, string[]> = {
-        'HAIR': ['уход за волосами', 'волосы', 'шампуни', 'маски для волос', 'бальзамы', 'кондиционеры'],
-        'FACE': ['уход за лицом', 'лицо', 'кремы', 'сыворотки', 'гидрофильные масла', 'пудры', 'маски для лица'],
-        'BODY': ['уход за телом', 'тело', 'скрабы', 'лосьоны', 'гели', 'масла для тела'],
-        'MAKEUP': ['макияж', 'декоративная косметика', 'румяна', 'тени', 'помады', 'туши', 'подводки'],
+    // Extended Russian name aliases for subcategories
+    const SUBCATEGORY_ALIASES: Record<string, string[]> = {
+        'HAIR': ['волосы', 'шампуни', 'маски для волос', 'бальзамы', 'кондиционеры'],
+        'FACE': ['лицо', 'кремы', 'сыворотки', 'гидрофильные масла', 'пудры', 'маски для лица'],
+        'BODY': ['тело', 'скрабы', 'лосьоны', 'гели', 'масла для тела'],
+        'MAKEUP': ['декоративная косметика', 'румяна', 'тени', 'помады', 'туши', 'подводки'],
     };
 
     configs.forEach(c => {
-        const upperCat = c.category.toUpperCase();
-        const lowerCat = c.category.toLowerCase();
+        // Store under original key (could be Russian or English)
+        categoryConfigCache.set(c.category, c);
+        categoryConfigCache.set(c.category.toLowerCase(), c);
+        categoryConfigCache.set(c.category.toUpperCase(), c);
 
-        // Standard keys
-        categoryConfigCache.set(upperCat, c);
-        categoryConfigCache.set(lowerCat, c);
+        // Also store under the normalized English key
+        const englishKey = normalizeCategoryKey(c.category);
+        categoryConfigCache.set(englishKey, c);
+        categoryConfigCache.set(englishKey.toLowerCase(), c);
 
-        // Add Russian aliases for this category
-        const aliases = RUSSIAN_ALIASES[upperCat] || [];
+        // And store under the Russian equivalent if different
+        const russianName = CATEGORY_MAP[englishKey as keyof typeof CATEGORY_MAP];
+        if (russianName && russianName !== c.category) {
+            categoryConfigCache.set(russianName, c);
+            categoryConfigCache.set(russianName.toLowerCase(), c);
+        }
+
+        // Add subcategory aliases for this category
+        const aliases = SUBCATEGORY_ALIASES[englishKey] || [];
         aliases.forEach(alias => {
             categoryConfigCache.set(alias, c);
             categoryConfigCache.set(alias.toUpperCase(), c);

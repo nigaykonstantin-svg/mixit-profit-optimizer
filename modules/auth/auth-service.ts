@@ -1,6 +1,6 @@
 'use client';
 
-import { UserId, USERS, UserRole } from '@/modules/users';
+import { UserId, USERS, UserRole, ModuleId, hasModuleAccess as checkModuleAccess } from '@/modules/users';
 
 const AUTH_KEY = 'mixit_auth';
 
@@ -9,6 +9,7 @@ export interface AuthUser {
     name: string;
     role: UserRole;
     avatar: string;
+    departmentId?: string;
 }
 
 export function login(username: string, password: string): AuthUser | null {
@@ -23,6 +24,7 @@ export function login(username: string, password: string): AuthUser | null {
         name: user.name,
         role: user.role,
         avatar: user.avatar,
+        departmentId: user.departmentId,
     };
 
     if (typeof window !== 'undefined') {
@@ -50,3 +52,15 @@ export function getCurrentUser(): AuthUser | null {
         return null;
     }
 }
+
+// Re-export module access check with AuthUser support
+export function canAccessModule(user: AuthUser | null, module: ModuleId): boolean {
+    if (!user) return false;
+    return checkModuleAccess(user.role, module);
+}
+
+// Check if user can access org structure
+export function canAccessOrgStructure(user: AuthUser | null): boolean {
+    return canAccessModule(user, 'org-structure');
+}
+

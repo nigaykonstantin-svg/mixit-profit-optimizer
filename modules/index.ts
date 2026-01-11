@@ -3,6 +3,8 @@ export * from './auth';
 export * from './tasks';
 export * from './users';
 export * from './shared';
+export * from './org-structure';
+
 
 // Categories module - explicit exports to avoid naming conflicts
 export {

@@ -1,0 +1,914 @@
+/* Org Structure Module Styles */
+/* Based on mixit-org-platform.html design */
+
+/* CSS Variables - inherit from app globals */
+.orgModule {
+    --bg: #0a0a12;
+    --card: #13131f;
+    --card-hover: #1a1a2a;
+    --pink: #ff4d8d;
+    --purple: #8b5cf6;
+    --blue: #3b82f6;
+    --teal: #14b8a6;
+    --orange: #f97316;
+    --green: #22c55e;
+    --red: #ef4444;
+    --yellow: #eab308;
+    --text: #ffffff;
+    --muted: #71717a;
+    --border: rgba(255, 255, 255, 0.1);
+}
+
+/* Container */
+.container {
+    min-height: 100vh;
+    background: var(--bg);
+    color: var(--text);
+}
+
+/* Header */
+.header {
+    background: linear-gradient(135deg, rgba(139, 92, 246, 0.15), rgba(255, 77, 141, 0.15));
+    padding: 20px 40px;
+    border-bottom: 1px solid var(--border);
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    backdrop-filter: blur(20px);
+}
+
+.headerTop {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+}
+
+.logo h1 {
+    font-size: 1.6em;
+    background: linear-gradient(90deg, var(--pink), var(--purple));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+.logo span {
+    color: var(--muted);
+    font-size: 0.85em;
+}
+
+.headerStats {
+    display: flex;
+    gap: 20px;
+}
+
+.headerStat {
+    text-align: center;
+    padding: 10px 20px;
+    background: var(--card);
+    border-radius: 10px;
+}
+
+.headerStatValue {
+    font-size: 1.4em;
+    font-weight: 700;
+    color: var(--teal);
+}
+
+.headerStatLabel {
+    font-size: 0.7em;
+    color: var(--muted);
+}
+
+/* Main Tabs */
+.tabs {
+    display: flex;
+    gap: 5px;
+    background: var(--card);
+    padding: 5px;
+    border-radius: 12px;
+    width: fit-content;
+}
+
+.tab {
+    padding: 12px 30px;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.3s;
+    color: var(--muted);
+    font-weight: 500;
+    border: none;
+    background: none;
+    font-size: 0.95em;
+}
+
+.tab:hover {
+    color: var(--text);
+}
+
+.activeTab {
+    background: linear-gradient(135deg, var(--purple), var(--pink));
+    color: white;
+}
+
+/* Main Layout */
+.main {
+    display: flex;
+    height: calc(100vh - 140px);
+}
+
+/* Sidebar */
+.sidebar {
+    width: 300px;
+    background: var(--card);
+    border-right: 1px solid var(--border);
+    padding: 20px;
+    overflow-y: auto;
+}
+
+.sidebarTitle {
+    font-size: 0.8em;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 15px;
+}
+
+.deptList {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.deptItem {
+    padding: 12px 15px;
+    border-radius: 10px;
+    margin-bottom: 6px;
+    cursor: pointer;
+    transition: all 0.2s;
+    border: 1px solid transparent;
+}
+
+.deptItem:hover {
+    background: var(--card-hover);
+}
+
+.deptItemActive {
+    background: var(--card-hover);
+    border-color: var(--purple);
+}
+
+.deptItemHeader {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 6px;
+}
+
+.deptName {
+    font-weight: 600;
+    font-size: 0.9em;
+}
+
+.deptCount {
+    font-size: 0.75em;
+    color: var(--muted);
+    background: rgba(255, 255, 255, 0.1);
+    padding: 2px 8px;
+    border-radius: 10px;
+}
+
+.deptProgress {
+    height: 3px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 2px;
+    overflow: hidden;
+}
+
+.deptProgressBar {
+    height: 100%;
+    border-radius: 2px;
+    transition: width 0.3s ease;
+}
+
+.progressHigh {
+    background: var(--green);
+}
+
+.progressMid {
+    background: var(--yellow);
+}
+
+.progressLow {
+    background: var(--red);
+}
+
+/* Content */
+.content {
+    flex: 1;
+    padding: 25px;
+    overflow-y: auto;
+}
+
+/* Goals View */
+.contentHeader {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 25px;
+}
+
+.deptTitle {
+    font-size: 1.6em;
+    margin-bottom: 5px;
+}
+
+.deptSubtitle {
+    color: var(--muted);
+    font-size: 0.9em;
+}
+
+.addGoalBtn {
+    padding: 10px 20px;
+    background: linear-gradient(135deg, var(--purple), var(--pink));
+    border: none;
+    border-radius: 10px;
+    color: white;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.addGoalBtn:hover {
+    transform: translateY(-2px);
+}
+
+.summaryCards {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 15px;
+    margin-bottom: 25px;
+}
+
+.summaryCard {
+    background: var(--card);
+    padding: 18px;
+    border-radius: 12px;
+    border: 1px solid var(--border);
+}
+
+.summaryCardTitle {
+    font-size: 0.75em;
+    color: var(--muted);
+    margin-bottom: 8px;
+}
+
+.summaryCardValue {
+    font-size: 1.8em;
+    font-weight: 700;
+}
+
+/* Goals Grid */
+.goalsGrid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: 18px;
+}
+
+.goalCard {
+    background: var(--card);
+    border-radius: 14px;
+    padding: 22px;
+    border: 1px solid var(--border);
+    transition: all 0.2s;
+}
+
+.goalCard:hover {
+    border-color: var(--purple);
+    transform: translateY(-2px);
+}
+
+.goalHeader {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+}
+
+.goalType {
+    padding: 4px 10px;
+    border-radius: 12px;
+    font-size: 0.7em;
+    font-weight: 600;
+    text-transform: uppercase;
+}
+
+.typeRevenue {
+    background: rgba(34, 197, 94, 0.2);
+    color: var(--green);
+}
+
+.typeGrowth {
+    background: rgba(59, 130, 246, 0.2);
+    color: var(--blue);
+}
+
+.typeEfficiency {
+    background: rgba(249, 115, 22, 0.2);
+    color: var(--orange);
+}
+
+.typeQuality {
+    background: rgba(139, 92, 246, 0.2);
+    color: var(--purple);
+}
+
+.goalPriority {
+    display: flex;
+    gap: 3px;
+}
+
+.priorityDot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: var(--muted);
+}
+
+.priorityDotActive {
+    background: var(--pink);
+}
+
+.goalTitle {
+    font-size: 1em;
+    font-weight: 600;
+    margin-bottom: 8px;
+}
+
+.goalDescription {
+    color: var(--muted);
+    font-size: 0.85em;
+    margin-bottom: 15px;
+    line-height: 1.4;
+}
+
+.goalMetrics {
+    display: flex;
+    gap: 15px;
+    margin-bottom: 15px;
+}
+
+.goalMetric {
+    flex: 1;
+}
+
+.metricLabel {
+    font-size: 0.7em;
+    color: var(--muted);
+    margin-bottom: 3px;
+}
+
+.metricValue {
+    font-size: 1.2em;
+    font-weight: 700;
+}
+
+.metricCurrent {
+    color: var(--teal);
+}
+
+.metricTarget {
+    color: var(--purple);
+}
+
+.goalProgressBar {
+    height: 6px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 3px;
+    overflow: hidden;
+    margin-bottom: 12px;
+}
+
+.goalProgressFill {
+    height: 100%;
+    border-radius: 3px;
+    transition: width 0.3s ease;
+}
+
+.goalFooter {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding-top: 12px;
+    border-top: 1px solid var(--border);
+    font-size: 0.8em;
+}
+
+.goalOwner {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.ownerAvatar {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--purple), var(--pink));
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.7em;
+    font-weight: 600;
+}
+
+.goalDeadline {
+    color: var(--muted);
+}
+
+/* Connections Panel */
+.connectionsPanel {
+    margin-top: 25px;
+    padding: 20px;
+    background: var(--card);
+    border-radius: 14px;
+    border: 1px solid var(--border);
+}
+
+.connectionsTitle {
+    font-size: 1em;
+    font-weight: 600;
+    margin-bottom: 15px;
+}
+
+.connectionsGrid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    gap: 12px;
+}
+
+.connectionItem {
+    padding: 12px;
+    background: var(--card-hover);
+    border-radius: 8px;
+    border-left: 3px solid;
+}
+
+.connectionPrimary {
+    border-color: var(--pink);
+}
+
+.connectionFunctional {
+    border-color: var(--blue);
+}
+
+.connectionProject {
+    border-color: var(--teal);
+}
+
+.connectionType {
+    font-size: 0.65em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 4px;
+}
+
+.connectionName {
+    font-weight: 500;
+    font-size: 0.9em;
+}
+
+/* Matrix View */
+.matrixView {
+    padding: 20px 0;
+}
+
+.matrixHeader {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 30px;
+}
+
+.matrixTitle {
+    font-size: 1.6em;
+}
+
+.matrixSubtitle {
+    color: var(--muted);
+    margin-top: 5px;
+}
+
+.matrixLegend {
+    display: flex;
+    gap: 25px;
+}
+
+.legendItem {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.85em;
+}
+
+.legendLine {
+    width: 30px;
+    height: 3px;
+    border-radius: 2px;
+}
+
+.linePrimary {
+    background: var(--pink);
+}
+
+.lineFunctional {
+    background: var(--blue);
+}
+
+.lineProject {
+    background: var(--teal);
+}
+
+/* CEO Section */
+.ceoSection {
+    display: flex;
+    justify-content: center;
+    margin-bottom: 40px;
+}
+
+.ceoCard {
+    background: linear-gradient(135deg, var(--purple), var(--pink));
+    padding: 25px 50px;
+    border-radius: 16px;
+    text-align: center;
+    box-shadow: 0 15px 50px rgba(139, 92, 246, 0.3);
+}
+
+.ceoName {
+    font-size: 1.4em;
+    font-weight: 700;
+}
+
+.ceoTitle {
+    opacity: 0.9;
+    font-size: 0.9em;
+    margin-top: 5px;
+}
+
+.ceoCount {
+    margin-top: 12px;
+    background: rgba(255, 255, 255, 0.2);
+    padding: 6px 18px;
+    border-radius: 20px;
+    font-size: 0.85em;
+    display: inline-block;
+}
+
+/* Matrix Grid */
+.matrixGrid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 20px;
+}
+
+.matrixCard {
+    background: var(--card);
+    border-radius: 14px;
+    overflow: hidden;
+    border: 1px solid var(--border);
+    transition: all 0.2s;
+}
+
+.matrixCard:hover {
+    transform: translateY(-3px);
+    border-color: var(--purple);
+}
+
+.matrixCardHeader {
+    padding: 18px 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.matrixCardHeader h3 {
+    font-size: 1em;
+    color: white;
+}
+
+.matrixCardCount {
+    background: rgba(255, 255, 255, 0.15);
+    padding: 4px 12px;
+    border-radius: 15px;
+    font-size: 0.8em;
+}
+
+.matrixCardBody {
+    padding: 0 20px 20px;
+}
+
+.matrixHead {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 10px;
+    margin-bottom: 15px;
+}
+
+.matrixHeadAvatar {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--teal), var(--blue));
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 600;
+    font-size: 0.9em;
+}
+
+.matrixHeadInfo h4 {
+    font-size: 0.9em;
+}
+
+.matrixHeadInfo span {
+    font-size: 0.75em;
+    color: var(--muted);
+}
+
+.matrixSubdeptList {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.matrixSubdept {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 0;
+    border-bottom: 1px solid var(--border);
+    font-size: 0.85em;
+}
+
+.matrixSubdept:last-child {
+    border-bottom: none;
+}
+
+.matrixSubdeptName {
+    color: var(--text);
+}
+
+.matrixSubdeptHead {
+    color: var(--muted);
+    font-size: 0.8em;
+}
+
+.matrixSubdeptCount {
+    background: var(--bg);
+    padding: 3px 10px;
+    border-radius: 10px;
+    font-size: 0.75em;
+    color: var(--muted);
+}
+
+/* Matrix connections in cards */
+.matrixConnections {
+    margin-top: 15px;
+    padding-top: 15px;
+    border-top: 1px dashed var(--border);
+}
+
+.matrixConnTitle {
+    font-size: 0.7em;
+    color: var(--muted);
+    text-transform: uppercase;
+    margin-bottom: 10px;
+}
+
+.matrixConnList {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+.matrixConnTag {
+    padding: 4px 10px;
+    border-radius: 12px;
+    font-size: 0.7em;
+}
+
+.connPrimary {
+    background: rgba(255, 77, 141, 0.2);
+    color: var(--pink);
+}
+
+.connFunctional {
+    background: rgba(59, 130, 246, 0.2);
+    color: var(--blue);
+}
+
+.connProject {
+    background: rgba(20, 184, 166, 0.2);
+    color: var(--teal);
+}
+
+/* Department color classes */
+.colorDirection {
+    background: linear-gradient(135deg, #ff4d8d, #ec4899);
+}
+
+.colorCommercial {
+    background: linear-gradient(135deg, #f97316, #ea580c);
+}
+
+.colorDigital {
+    background: linear-gradient(135deg, #14b8a6, #0d9488);
+}
+
+.colorMarketing {
+    background: linear-gradient(135deg, #3b82f6, #2563eb);
+}
+
+.colorBrand {
+    background: linear-gradient(135deg, #ec4899, #db2777);
+}
+
+.colorFinance {
+    background: linear-gradient(135deg, #6366f1, #4f46e5);
+}
+
+.colorOperations {
+    background: linear-gradient(135deg, #8b5cf6, #7c3aed);
+}
+
+.colorProcurement {
+    background: linear-gradient(135deg, #14b8a6, #0d9488);
+}
+
+.colorLab {
+    background: linear-gradient(135deg, #22c55e, #16a34a);
+}
+
+.colorExec {
+    background: linear-gradient(135deg, #8b5cf6, #7c3aed);
+}
+
+.colorLegal {
+    background: linear-gradient(135deg, #64748b, #475569);
+}
+
+/* Modal */
+.modalOverlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.8);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 200;
+}
+
+.modal {
+    background: var(--card);
+    border-radius: 16px;
+    padding: 25px;
+    width: 480px;
+    max-width: 90%;
+    border: 1px solid var(--border);
+}
+
+.modal h2 {
+    margin-bottom: 20px;
+    font-size: 1.2em;
+}
+
+.formGroup {
+    margin-bottom: 15px;
+}
+
+.formGroup label {
+    display: block;
+    margin-bottom: 6px;
+    font-size: 0.85em;
+    color: var(--muted);
+}
+
+.formGroup input,
+.formGroup select,
+.formGroup textarea {
+    width: 100%;
+    padding: 10px 12px;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: white;
+    font-size: 0.95em;
+}
+
+.formGroup input:focus,
+.formGroup select:focus {
+    outline: none;
+    border-color: var(--purple);
+}
+
+.formRow {
+    display: flex;
+    gap: 12px;
+}
+
+.formRow .formGroup {
+    flex: 1;
+}
+
+.modalActions {
+    display: flex;
+    gap: 12px;
+    margin-top: 20px;
+}
+
+.btn {
+    flex: 1;
+    padding: 12px;
+    border-radius: 8px;
+    font-weight: 600;
+    cursor: pointer;
+    border: none;
+}
+
+.btnPrimary {
+    background: linear-gradient(135deg, var(--purple), var(--pink));
+    color: white;
+}
+
+.btnSecondary {
+    background: var(--bg);
+    color: white;
+    border: 1px solid var(--border);
+}
+
+.btnPrimary:disabled,
+.btnSecondary:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+/* Loading state */
+.loading {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 200px;
+    color: var(--muted);
+}
+
+/* Empty state */
+.emptyState {
+    text-align: center;
+    padding: 40px;
+    color: var(--muted);
+}
+
+.emptyState p {
+    margin-bottom: 15px;
+}
+
+/* Responsive */
+@media (max-width: 1024px) {
+    .sidebar {
+        width: 240px;
+    }
+
+    .summaryCards {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+@media (max-width: 768px) {
+    .main {
+        flex-direction: column;
+        height: auto;
+    }
+
+    .sidebar {
+        width: 100%;
+        height: auto;
+        max-height: 200px;
+    }
+
+    .headerTop {
+        flex-direction: column;
+        gap: 15px;
+    }
+
+    .summaryCards {
+        grid-template-columns: 1fr 1fr;
+    }
+
+    .matrixHeader {
+        flex-direction: column;
+        gap: 15px;
+    }
+}

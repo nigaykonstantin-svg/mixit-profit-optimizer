@@ -21,29 +21,75 @@ import { getSupabaseClient, isSupabaseConfigured } from '@/analytics-engine/supa
  *   updated_at TIMESTAMPTZ DEFAULT NOW()
  * );
  * 
- * INSERT default values:
+ * INSERT default values (use Russian names for UI consistency):
  * INSERT INTO wb_category_config (category, min_margin_pct, ctr_warning, cr_order_warning, price_step_pct, drr_warning, stock_critical_days, stock_overstock_days)
  * VALUES 
- *   ('FACE', 25, 2.5, 3.0, 3, 20, 10, 120),
- *   ('HAIR', 22, 2.0, 2.5, 4, 18, 14, 90),
- *   ('BODY', 20, 1.8, 2.0, 5, 15, 14, 100),
- *   ('MAKEUP', 30, 3.0, 4.0, 2, 25, 7, 60);
+ *   ('Макияж', 30, 3.0, 4.0, 2, 25, 7, 60),
+ *   ('Уход за волосами', 22, 2.0, 2.5, 4, 18, 14, 90),
+ *   ('Уход за лицом', 25, 2.5, 3.0, 3, 20, 10, 120),
+ *   ('Уход за телом', 20, 1.8, 2.0, 5, 15, 14, 100);
  */
 
-// Fallback mock data (used when Supabase is not configured)
+// ============================================
+// CATEGORY MAPPING - Bidirectional Russian ↔ English
+// ============================================
+
+export const CATEGORY_MAP = {
+    // Russian → English (canonical key)
+    'Макияж': 'MAKEUP',
+    'Уход за волосами': 'HAIR',
+    'Уход за лицом': 'FACE',
+    'Уход за телом': 'BODY',
+    // English → Russian (display name)
+    'MAKEUP': 'Макияж',
+    'HAIR': 'Уход за волосами',
+    'FACE': 'Уход за лицом',
+    'BODY': 'Уход за телом',
+} as const;
+
+// Russian display names for UI (ordered)
+export const CATEGORY_DISPLAY_NAMES = [
+    'Макияж',
+    'Уход за волосами',
+    'Уход за лицом',
+    'Уход за телом',
+] as const;
+
+// Normalize any category name to canonical English key
+export function normalizeCategoryKey(category: string): string {
+    const upper = category.toUpperCase();
+    // If already English key
+    if (['MAKEUP', 'HAIR', 'FACE', 'BODY'].includes(upper)) {
+        return upper;
+    }
+    // Try Russian mapping
+    return CATEGORY_MAP[category as keyof typeof CATEGORY_MAP] || category.toUpperCase();
+}
+
+// Get display name (Russian) for a category
+export function getCategoryDisplayName(category: string): string {
+    const upper = category.toUpperCase();
+    if (['MAKEUP', 'HAIR', 'FACE', 'BODY'].includes(upper)) {
+        return CATEGORY_MAP[upper as keyof typeof CATEGORY_MAP] || category;
+    }
+    // Already Russian or unknown
+    return category;
+}
+
+// Fallback mock data (using Russian names for consistency with UI)
 const MOCK_CONFIGS: CategoryConfig[] = [
     {
-        category: 'FACE',
-        min_margin_pct: 25,
-        ctr_warning: 2.5,
-        cr_order_warning: 3.0,
-        price_step_pct: 3,
-        drr_warning: 20,
-        stock_critical_days: 10,
-        stock_overstock_days: 120,
+        category: 'Макияж',
+        min_margin_pct: 30,
+        ctr_warning: 3.0,
+        cr_order_warning: 4.0,
+        price_step_pct: 2,
+        drr_warning: 25,
+        stock_critical_days: 7,
+        stock_overstock_days: 60,
     },
     {
-        category: 'HAIR',
+        category: 'Уход за волосами',
         min_margin_pct: 22,
         ctr_warning: 2.0,
         cr_order_warning: 2.5,
@@ -53,7 +99,17 @@ const MOCK_CONFIGS: CategoryConfig[] = [
         stock_overstock_days: 90,
     },
     {
-        category: 'BODY',
+        category: 'Уход за лицом',
+        min_margin_pct: 25,
+        ctr_warning: 2.5,
+        cr_order_warning: 3.0,
+        price_step_pct: 3,
+        drr_warning: 20,
+        stock_critical_days: 10,
+        stock_overstock_days: 120,
+    },
+    {
+        category: 'Уход за телом',
         min_margin_pct: 20,
         ctr_warning: 1.8,
         cr_order_warning: 2.0,
@@ -61,16 +117,6 @@ const MOCK_CONFIGS: CategoryConfig[] = [
         drr_warning: 15,
         stock_critical_days: 14,
         stock_overstock_days: 100,
-    },
-    {
-        category: 'MAKEUP',
-        min_margin_pct: 30,
-        ctr_warning: 3.0,
-        cr_order_warning: 4.0,
-        price_step_pct: 2,
-        drr_warning: 25,
-        stock_critical_days: 7,
-        stock_overstock_days: 60,
     },
 ];
 
